@@ -305,11 +305,11 @@
     let activeScanners = {};
     let activeStreamTracks = {};
     let scanCooldown = false;
-    let inventoryMap = {};      // key -> { code/serial : item }
-    let productRequiresSN = {}; 
-    let totalExpected = {};     
-    let totalCounted = {};      
-    let currentSheetName = {};  
+    let inventoryMap = {};
+    let productRequiresSN = {};
+    let totalExpected = {};
+    let totalCounted = {};
+    let currentSheetName = {};
 
     window.onload = function() {
       let savedUrl = localStorage.getItem('gas_url');
@@ -427,7 +427,7 @@
 
       data.forEach(item => {
         exp += item.sysQty;
-        countedTotal += item.counted; // ดึงยอดที่นับไปแล้วจาก Google Sheets มาซิงค์ร่วมกัน
+        countedTotal += item.counted;
 
         if (item.serial) {
           productRequiresSN[key][item.code] = true;
@@ -527,7 +527,7 @@
       }
     }
 
-    // ทุกครั้งที่สแกน จะส่งค่าไปบันทึกและอัปเดตแบบ Real-time ร่วมกันทันที
+    // ฟังก์ชันเช็คและบล็อกเด็ดขาด ห้ามสแกนเกินจำนวนระบบ
     function processScanCode(text, key) {
       if (scanCooldown) return;
       scanCooldown = true;
@@ -535,31 +535,36 @@
       let map = inventoryMap[key];
       let reqSN = productRequiresSN[key];
       let targetItem = null;
-      let isDevice = false;
 
       if (map[text] && map[text].type === 'device') {
         targetItem = map[text];
-        isDevice = true;
         if (targetItem.counted >= 1) {
-          flashUI("⚠️ ซ้ำ! เครื่องนี้นับไปแล้ว", `SN: ${text} (มีคนนับไปแล้ว)`, "warning", key);
+          flashUI("⚠️ ซ้ำ! เครื่องนี้นับไปแล้ว", `SN: ${text}`, "error", key);
+          playBeep('error');
           setTimeout(() => { scanCooldown = false; }, 1500);
           return;
         }
       }
       else if (map[text] && map[text].type === 'gadget') {
         targetItem = map[text];
+        // เช็คว่าถ้าจำนวนที่นับไปแล้ว เท่ากับหรือมากกว่าระบบ บล็อกทันที!
         if (targetItem.counted >= targetItem.sysQty) {
-          flashUI("⚠️ ครบแล้ว!", `${targetItem.name} (${targetItem.counted}/${targetItem.sysQty})`, "warning", key);
+          flashUI("❌ ครบจำนวนแล้ว!", `${targetItem.name} (${targetItem.counted}/${targetItem.sysQty}) - ห้ามสแกนเกิน`, "error", key);
+          playBeep('error');
+          setTimeout(() => { scanCooldown = false; }, 1500);
+          return;
         }
       }
       else if (reqSN && reqSN[text]) {
         flashUI("❌ ระวัง!", "สินค้านี้ต้องสแกน IMEI หรือ SN เท่านั้น", "error", key);
+        playBeep('error');
         setTimeout(() => { scanCooldown = false; }, 1500);
         return;
       }
 
       if (!targetItem) {
         flashUI("❌ ไม่พบรายการ!", `บาร์โค้ด [${text}] ไม่อยู่ในระบบ`, "error", key);
+        playBeep('error');
         setTimeout(() => { scanCooldown = false; }, 1500);
         return;
       }
@@ -570,14 +575,10 @@
           targetItem.counted = res.newCount;
           totalCounted[key] = res.totalCounted;
           
-          if (isDevice) {
+          if (targetItem.type === 'device') {
             flashUI("✅ ผ่าน!", `${targetItem.name} (SN: ${text})`, "success", key);
           } else {
-            if (targetItem.counted > targetItem.sysQty) {
-              flashUI("⚠️ ยอดเกินระบบ!", `${targetItem.name} (${targetItem.counted}/${targetItem.sysQty})`, "warning", key);
-            } else {
-              flashUI("✅ ผ่าน!", `${targetItem.name} (${targetItem.counted}/${targetItem.sysQty})`, "success", key);
-            }
+            flashUI("✅ ผ่าน!", `${targetItem.name} (${targetItem.counted}/${targetItem.sysQty})`, "success", key);
           }
           updateLiveList(key);
         } else {
