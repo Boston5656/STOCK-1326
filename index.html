@@ -150,9 +150,12 @@
 <body>
   <div class="container">
 
-    <!-- ช่องตั้งค่าลิงก์เชื่อมต่อ Apps Script -->
+    <!-- ช่องตั้งค่าลิงก์เชื่อมต่อ Apps Script (กดปุ่มเปิด-ปิดได้ตลอด) -->
     <div class="price-check-card mb-3" id="configCard">
-      <div class="card-title-badge font-mono text-warning">⚙️ เชื่อมต่อระบบหลังบ้าน</div>
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <div class="card-title-badge font-mono text-warning m-0">⚙️ ตั้งค่าลิงก์หลังบ้าน</div>
+        <button class="btn btn-sm btn-dark text-sub border-secondary" onclick="toggleConfig()" style="font-size:0.75rem;">ซ่อน/แสดง</button>
+      </div>
       <p class="text-sub small text-start">วางลิงก์ Web App (ที่ลงท้ายด้วย /exec จาก Google Apps Script):</p>
       <div class="search-input-group">
         <input type="text" id="scriptUrlInput" class="search-input" placeholder="https://script.google.com/macros/s/.../exec">
@@ -261,16 +264,28 @@
       let savedUrl = localStorage.getItem('gas_url');
       if (savedUrl) {
         document.getElementById('scriptUrlInput').value = savedUrl;
-        document.getElementById('configCard').style.display = 'none';
       }
     };
+
+    function toggleConfig() {
+      let card = document.getElementById('configCard');
+      let body = card.querySelector('.search-input-group');
+      let desc = card.querySelector('p');
+      if(body.style.display === 'none') {
+        body.style.display = 'flex';
+        desc.style.display = 'block';
+      } else {
+        body.style.display = 'none';
+        desc.style.display = 'none';
+      }
+    }
 
     function saveScriptUrl() {
       let url = document.getElementById('scriptUrlInput').value.trim();
       if(!url) { alert('กรุณากรอกลิงก์'); return; }
       localStorage.setItem('gas_url', url);
-      document.getElementById('configCard').style.display = 'none';
       alert('บันทึกการเชื่อมต่อสำเร็จ!');
+      location.reload();
     }
 
     function getApiUrl() {
@@ -304,7 +319,6 @@
       if(tab === 'report') loadReport();
     }
 
-    // ใช้ Google Script Runner / JSONP พลังทะลวงทุก CORS
     function callGAS(action, params, callback) {
       let url = getApiUrl();
       let callbackName = 'cb_' + Math.round(Math.random() * 1000000);
@@ -333,7 +347,7 @@
 
     function initInventory(sheetName, key) {
       let url = getApiUrl();
-      if(!url) { alert('กรุณากรอกและบันทึก URL หลังบ้านด้านบนก่อนครับ'); return; }
+      if(!url) { alert('กรุณากรอกและบันทึก URL หลังบ้านก่อนครับ'); return; }
 
       let initBox = document.getElementById('initBox' + key);
       let btn = initBox.querySelector('button');
@@ -502,7 +516,6 @@
       if(!confirm("ต้องการปิดรอบการนับและบันทึกรายงานใช่หรือไม่?")) return;
       stopAllCameras();
 
-      let url = getApiUrl();
       const payloadData = [];
       Object.values(inventoryMap[key]).forEach(itm => {
         let diff = itm.counted - itm.sysQty;
@@ -510,7 +523,6 @@
         payloadData.push({ category: itm.category, code: itm.code, name: itm.name, sysQty: itm.sysQty, counted: itm.counted, diff: diff, serial: itm.serial, status: status });
       });
 
-      // ส่งข้อมูลบันทึกผ่าน JSONP ส่งข้ามโดเมน
       let payloadStr = encodeURIComponent(JSON.stringify({ type: `นับ ${labelType}`, data: payloadData }));
       callGAS('saveReport', { payload: payloadStr }, function(resp) {
         alert(resp.message || 'บันทึกรายงานสำเร็จ!');
@@ -519,16 +531,15 @@
     }
 
     function loadReport() {
-      let url = getApiUrl();
       document.getElementById('reportContainer').innerHTML = '<div class="text-center text-sub py-4 font-mono">⏳ กำลังโหลดรายงาน...</div>';
       
-      if(!url) {
+      if(!getApiUrl()) {
         document.getElementById('reportContainer').innerHTML = '<div class="text-center text-danger py-4 font-mono">กรุณากรอก URL หลังบ้านด้านบนก่อน</div>';
         return;
       }
 
       callGAS('getReport', {}, function(res) {
-        if(res.status !== 'success' || !res.data || res.data.length === 0) {
+        if(!res || res.status !== 'success' || !res.data || res.data.length === 0) {
           document.getElementById('reportContainer').innerHTML = '<div class="text-center text-sub py-4 font-mono">ยังไม่มีข้อมูลรายงานในระบบ</div>';
           return;
         }
