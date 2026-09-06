@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+  <!-- ============================================================ -->
+  <!-- FIX: Google Apps Script ครอบหน้าเว็บของเราด้วย iframe อีกชั้น   -->
+  <!-- ดีดตัวเองออกจาก iframe ไปเป็นหน้าเว็บเต็มหน้าจอโดยตรง            -->
+  <!-- ============================================================ -->
+  <script>
+    if (window.top !== window.self) {
+      window.top.location.href = window.self.location.href;
+    }
+  </script>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Html5QrcodeScanner: ตัวจัดการกล้องพร้อม UI ในตัว (ขอสิทธิ์/เลือกกล้อง/ปุ่มหยุด) -->
+  <!-- เสถียรกว่า Html5Qrcode.start() แบบ manual มาก เพราะเป็นตัวเดียวกับที่สคริปต์เช็คราคาใช้แล้วได้ผลทุก Browser -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+  <style>
+    :root {
+      --bg-black: #000000;
+      --card-dark: #121212;
+      --border-gray: #2C2C2E;
+      --text-main: #FFFFFF;
+      --text-sub: #8E8E93;
+      --accent-yellow: #FFD60A;
+      --apple-red: #FF453A;
+      --apple-blue: #0A84FF;
+    }
+
+    body {
+      background-color: var(--bg-black);
+      font-family: 'Sarabun', -apple-system, sans-serif;
+      color: var(--text-main);
+      padding: 15px 0 80px 0;
+    }
+
+    .font-mono {
+      font-family: 'Space Grotesk', sans-serif;
+      letter-spacing: -0.5px;
+    }
+
+    .menu-bar {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      max-width: 600px;
+      margin: 0 auto 20px auto;
+      background: var(--card-dark);
+      padding: 6px;
+      border-radius: 50px;
+      border: 1px solid var(--border-gray);
+    }
+    .menu-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-sub);
+      padding: 8px 16px;
+      border-radius: 40px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+    .menu-btn.active {
+      background: var(--accent-yellow);
+      color: #000000;
+      font-weight: 700;
+    }
+
+    .price-check-card {
+      max-width: 600px;
+      margin: 0 auto;
+      background-color: var(--card-dark);
+      border: 1px solid var(--border-gray);
+      border-radius: 24px;
+      padding: 24px;
+      text-align: center;
+    }
+
+    .card-title-badge {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-yellow-scan {
+      background-color: var(--accent-yellow);
+      color: #000000;
+      font-weight: 700;
+      border-radius: 16px;
+      padding: 14px;
+      border: none;
+      width: 100%;
+      font-size: 1rem;
+      box-shadow: 0 4px 20px rgba(255, 214, 10, 0.2);
+      transition: transform 0.1s;
+    }
+    .btn-yellow-scan:active { transform: scale(0.98); }
+
+    .search-input-group {
+      display: flex;
+      background: #000000;
+      border: 1px solid var(--border-gray);
+      border-radius: 14px;
+      padding: 4px;
+      margin-top: 12px;
+    }
+    .search-input {
+      background: transparent;
+      border: none;
+      color: white;
+      padding: 10px 14px;
+      font-size: 0.9rem;
+      width: 100%;
+      outline: none;
+    }
+    .btn-search-sm {
+      background: var(--border-gray);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      padding: 0 16px;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    /* กล่องกล้องที่ Html5QrcodeScanner จะ render UI ของมันเข้ามาเอง */
+    .reader-box {
+      width: 100%;
+      max-width: 400px;
+      margin: 15px auto;
+      border-radius: 16px;
+      overflow: hidden;
+      border: 2px solid var(--accent-yellow);
+    }
+    .reader-box video { border-radius: 12px; }
+
+    .scan-flash {
+      border-radius: 14px;
+      padding: 14px;
+      text-align: center;
+      margin-top: 15px;
+      font-weight: 700;
+      display: none;
+    }
+    .flash-success { background-color: rgba(10, 132, 255, 0.2); border: 1px solid var(--apple-blue); color: var(--apple-blue); }
+    .flash-error { background-color: rgba(255, 69, 58, 0.2); border: 1px solid var(--apple-red); color: var(--apple-red); }
+    .flash-warning { background-color: rgba(255, 214, 10, 0.2); border: 1px solid var(--accent-yellow); color: var(--accent-yellow); }
+
+    .badge-complete { background-color: var(--apple-blue); color: white; border-radius: 8px; padding: 4px 10px; font-weight: 600; font-size: 0.75rem;}
+    .badge-incomplete { background-color: var(--apple-red); color: white; border-radius: 8px; padding: 4px 10px; font-weight: 600; font-size: 0.75rem;}
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <div class="menu-bar font-mono">
+      <button class="menu-btn active" id="menu100" onclick="switchTab('100')">📦 นับ 100%</button>
+      <button class="menu-btn" id="menuRand" onclick="switchTab('rand')">🎲 นับสุ่ม</button>
+      <button class="menu-btn" id="menuRep" onclick="switchTab('report')">🔍 สรุปผล</button>
+    </div>
+
+    <!-- TAB 1: นับ 100% -->
+    <div class="tab-content-area" id="area100">
+      <div class="price-check-card">
+        <div class="card-title-badge font-mono">📷 FULL INVENTORY AUDIT (100%)</div>
+
+        <div id="initBox100">
+          <button class="btn-yellow-scan font-mono" onclick="initInventory('FULL', '100')">
+            🗂️ โหลดข้อมูลและเริ่มระบบ
+          </button>
+        </div>
+
+        <div id="activeBox100" style="display:none;">
+          <div id="reader100" class="reader-box"></div>
+
+          <div class="search-input-group">
+            <input type="text" id="manualInput100" class="search-input" placeholder="หรือพิมพ์รหัส/Serial แล้วกด Enter..." onkeypress="handleManualInput(event, '100')">
+            <button class="btn-search-sm" onclick="processManualInput('100')">ค้นหา</button>
+          </div>
+
+          <div id="scanStatus100" class="scan-flash font-mono"></div>
+
+          <hr class="border-secondary my-3 opacity-25">
+          <div class="d-flex justify-content-between text-sub font-mono small mb-2">
+             <span>ความคืบหน้า</span>
+             <span id="countProgress100" class="text-white fw-bold">0/0</span>
+          </div>
+          <ul class="list-group text-start font-mono small mb-3" id="liveList100" style="max-height: 220px; overflow-y: auto; background: transparent;"></ul>
+
+          <button class="btn btn-danger w-100 font-mono fw-bold py-2 rounded-4" onclick="finishCount('100%', '100')">💾 จบการนับ และบันทึก REPORT</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: นับสุ่ม -->
+    <div class="tab-content-area" id="arearand" style="display:none;">
+      <div class="price-check-card">
+        <div class="card-title-badge font-mono">🎲 RANDOM INVENTORY AUDIT</div>
+
+        <div id="initBoxrand">
+          <button class="btn-yellow-scan font-mono" onclick="initInventory('RANDOM', 'rand')">
+            🗂️ โหลดข้อมูลและเริ่มระบบ
+          </button>
+        </div>
+
+        <div id="activeBoxrand" style="display:none;">
+          <div id="readerrand" class="reader-box"></div>
+
+          <div class="search-input-group">
+            <input type="text" id="manualInputrand" class="search-input" placeholder="หรือพิมพ์รหัส/Serial แล้วกด Enter..." onkeypress="handleManualInput(event, 'rand')">
+            <button class="btn-search-sm" onclick="processManualInput('rand')">ค้นหา</button>
+          </div>
+
+          <div id="scanStatusrand" class="scan-flash font-mono"></div>
+
+          <hr class="border-secondary my-3 opacity-25">
+          <div class="d-flex justify-content-between text-sub font-mono small mb-2">
+             <span>ความคืบหน้า</span>
+             <span id="countProgressrand" class="text-white fw-bold">0/0</span>
+          </div>
+          <ul class="list-group text-start font-mono small mb-3" id="liveListrand" style="max-height: 220px; overflow-y: auto; background: transparent;"></ul>
+
+          <button class="btn btn-danger w-100 font-mono fw-bold py-2 rounded-4" onclick="finishCount('สุ่ม', 'rand')">💾 จบการนับ และบันทึก REPORT</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: REPORT -->
+    <div class="tab-content-area" id="areareport" style="display:none;">
+      <div class="price-check-card">
+        <div class="card-title-badge font-mono">📊 REPORT HISTORY</div>
+        <div id="reportContainer">
+          <div class="text-center text-sub py-4 font-mono">กำลังโหลดรายงาน...</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    let scanners = {};          // key -> Html5QrcodeScanner instance ที่กำลังทำงานอยู่
+    let scanCooldown = false;
+    let inventoryMap = {};      // key -> { code/serial : item }
+    let productRequiresSN = {}; // key -> { code : true }
+    let totalExpected = {};     // key -> number
+    let totalCounted = {};      // key -> number
+
+    function playBeep(type) {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        osc.connect(ctx.destination);
+        if (type === 'success') {
+          osc.type = 'sine'; osc.frequency.value = 880; osc.start(); setTimeout(()=>osc.stop(), 120);
+        } else {
+          osc.type = 'square'; osc.frequency.value = 220; osc.start(); setTimeout(()=>osc.stop(), 250);
+        }
+      } catch(e) {}
+    }
+
+    function switchTab(tab) {
+      ['100', 'rand', 'report'].forEach(t => {
+        document.getElementById('menu' + (t === '100' ? '100' : (t === 'rand' ? 'Rand' : 'Rep'))).classList.remove('active');
+        document.getElementById('area' + t).style.di
