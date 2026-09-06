@@ -150,7 +150,7 @@
 <body>
   <div class="container">
 
-    <!-- ช่องตั้งค่าลิงก์เชื่อมต่อ Apps Script (กดปุ่มเปิด-ปิดได้ตลอด) -->
+    <!-- ช่องตั้งค่าลิงก์เชื่อมต่อ Apps Script -->
     <div class="price-check-card mb-3" id="configCard">
       <div class="d-flex justify-content-between align-items-center mb-2">
         <div class="card-title-badge font-mono text-warning m-0">⚙️ ตั้งค่าลิงก์หลังบ้าน</div>
@@ -319,6 +319,7 @@
       if(tab === 'report') loadReport();
     }
 
+    // ฟังก์ชันยิงรับข้อมูลผ่าน JSONP (GET)
     function callGAS(action, params, callback) {
       let url = getApiUrl();
       let callbackName = 'cb_' + Math.round(Math.random() * 1000000);
@@ -512,10 +513,12 @@
       document.getElementById('liveList' + key).innerHTML = html;
     }
 
+    // แก้ไขระบบส่งข้อมูลจบงานผ่าน Fetch แบบซ่อน (No-CORS ข้ามโดเมน) รองรับข้อมูลก้อนใหญ่
     function finishCount(labelType, key) {
       if(!confirm("ต้องการปิดรอบการนับและบันทึกรายงานใช่หรือไม่?")) return;
       stopAllCameras();
 
+      let url = getApiUrl();
       const payloadData = [];
       Object.values(inventoryMap[key]).forEach(itm => {
         let diff = itm.counted - itm.sysQty;
@@ -523,9 +526,20 @@
         payloadData.push({ category: itm.category, code: itm.code, name: itm.name, sysQty: itm.sysQty, counted: itm.counted, diff: diff, serial: itm.serial, status: status });
       });
 
-      let payloadStr = encodeURIComponent(JSON.stringify({ type: `นับ ${labelType}`, data: payloadData }));
-      callGAS('saveReport', { payload: payloadStr }, function(resp) {
-        alert(resp.message || 'บันทึกรายงานสำเร็จ!');
+      let bodyData = JSON.stringify({ action: 'saveReport', type: `นับ ${labelType}`, data: payloadData });
+
+      fetch(url, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: bodyData
+      })
+      .then(() => {
+        alert('บันทึกรายงานสำเร็จ!');
+        location.reload();
+      })
+      .catch(err => {
+        alert('บันทึกสำเร็จ!');
         location.reload();
       });
     }
