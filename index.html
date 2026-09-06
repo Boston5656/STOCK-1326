@@ -5,21 +5,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-  <!-- ============================================================ -->
-  <!-- FIX: Google Apps Script ครอบหน้าเว็บของเราด้วย iframe อีกชั้น   -->
-  <!-- ดีดตัวเองออกจาก iframe ไปเป็นหน้าเว็บเต็มหน้าจอโดยตรง            -->
-  <!-- ============================================================ -->
-  <script>
-    if (window.top !== window.self) {
-      window.top.location.href = window.self.location.href;
-    }
-  </script>
-
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <!-- Html5QrcodeScanner: ตัวจัดการกล้องพร้อม UI ในตัว (ขอสิทธิ์/เลือกกล้อง/ปุ่มหยุด) -->
-  <!-- เสถียรกว่า Html5Qrcode.start() แบบ manual มาก เพราะเป็นตัวเดียวกับที่สคริปต์เช็คราคาใช้แล้วได้ผลทุก Browser -->
-  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 
   <style>
     :root {
@@ -103,7 +91,6 @@
       width: 100%;
       font-size: 1rem;
       box-shadow: 0 4px 20px rgba(255, 214, 10, 0.2);
-      transition: transform 0.1s;
     }
     .btn-yellow-scan:active { transform: scale(0.98); }
 
@@ -134,7 +121,6 @@
       font-weight: 600;
     }
 
-    /* กล่องกล้องที่ Html5QrcodeScanner จะ render UI ของมันเข้ามาเอง */
     .reader-box {
       width: 100%;
       max-width: 400px;
@@ -142,8 +128,8 @@
       border-radius: 16px;
       overflow: hidden;
       border: 2px solid var(--accent-yellow);
+      background: #000;
     }
-    .reader-box video { border-radius: 12px; }
 
     .scan-flash {
       border-radius: 14px;
@@ -164,6 +150,16 @@
 <body>
   <div class="container">
 
+    <!-- ช่องตั้งค่าลิงก์เชื่อมต่อ Apps Script (ใส่ครั้งแรกครั้งเดียว) -->
+    <div class="price-check-card mb-3" id="configCard">
+      <div class="card-title-badge font-mono text-warning">⚙️ เชื่อมต่อระบบหลังบ้าน</div>
+      <p class="text-sub small text-start">วางลิงก์ Web App (ที่ลงท้ายด้วย /exec จาก Google Apps Script) เพื่อให้ GitHub ดึงข้อมูล:</p>
+      <div class="search-input-group">
+        <input type="text" id="scriptUrlInput" class="search-input" placeholder="https://script.google.com/macros/s/.../exec">
+        <button class="btn-search-sm bg-warning text-dark fw-bold" onclick="saveScriptUrl()">บันทึก</button>
+      </div>
+    </div>
+
     <div class="menu-bar font-mono">
       <button class="menu-btn active" id="menu100" onclick="switchTab('100')">📦 นับ 100%</button>
       <button class="menu-btn" id="menuRand" onclick="switchTab('rand')">🎲 นับสุ่ม</button>
@@ -182,7 +178,9 @@
         </div>
 
         <div id="activeBox100" style="display:none;">
-          <div id="reader100" class="reader-box"></div>
+          <button class="btn-yellow-scan font-mono mb-3 py-2 fs-6" onclick="startCamera('100')">📸 เปิดกล้องสแกน</button>
+          <div id="reader100" class="reader-box" style="display:none;"></div>
+          <button id="closeCam100" class="btn btn-sm btn-dark w-100 mb-2 text-sub" style="display:none;" onclick="stopCamera('100')">ปิดกล้อง</button>
 
           <div class="search-input-group">
             <input type="text" id="manualInput100" class="search-input" placeholder="หรือพิมพ์รหัส/Serial แล้วกด Enter..." onkeypress="handleManualInput(event, '100')">
@@ -215,7 +213,9 @@
         </div>
 
         <div id="activeBoxrand" style="display:none;">
-          <div id="readerrand" class="reader-box"></div>
+          <button class="btn-yellow-scan font-mono mb-3 py-2 fs-6" onclick="startCamera('rand')">📸 เปิดกล้องสแกน</button>
+          <div id="readerrand" class="reader-box" style="display:none;"></div>
+          <button id="closeCamrand" class="btn btn-sm btn-dark w-100 mb-2 text-sub" style="display:none;" onclick="stopCamera('rand')">ปิดกล้อง</button>
 
           <div class="search-input-group">
             <input type="text" id="manualInputrand" class="search-input" placeholder="หรือพิมพ์รหัส/Serial แล้วกด Enter..." onkeypress="handleManualInput(event, 'rand')">
@@ -250,12 +250,32 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-    let scanners = {};          // key -> Html5QrcodeScanner instance ที่กำลังทำงานอยู่
+    let activeScanners = {};
     let scanCooldown = false;
-    let inventoryMap = {};      // key -> { code/serial : item }
-    let productRequiresSN = {}; // key -> { code : true }
-    let totalExpected = {};     // key -> number
-    let totalCounted = {};      // key -> number
+    let inventoryMap = {};
+    let productRequiresSN = {};
+    let totalExpected = {};
+    let totalCounted = {};
+
+    window.onload = function() {
+      let savedUrl = localStorage.getItem('gas_url');
+      if (savedUrl) {
+        document.getElementById('scriptUrlInput').value = savedUrl;
+        document.getElementById('configCard').style.display = 'none';
+      }
+    };
+
+    function saveScriptUrl() {
+      let url = document.getElementById('scriptUrlInput').value.trim();
+      if(!url) { alert('กรุณากรอกลิงก์'); return; }
+      localStorage.setItem('gas_url', url);
+      document.getElementById('configCard').style.display = 'none';
+      alert('บันทึกการเชื่อมต่อสำเร็จ!');
+    }
+
+    function getApiUrl() {
+      return localStorage.getItem('gas_url');
+    }
 
     function playBeep(type) {
       try {
@@ -271,6 +291,259 @@
     }
 
     function switchTab(tab) {
+      stopAllCameras();
       ['100', 'rand', 'report'].forEach(t => {
-        document.getElementById('menu' + (t === '100' ? '100' : (t === 'rand' ? 'Rand' : 'Rep'))).classList.remove('active');
-        document.getElementById('area' + t).style.di
+        let btnKey = t === '100' ? '100' : (t === 'rand' ? 'Rand' : 'Rep');
+        document.getElementById('menu' + btnKey).classList.remove('active');
+        document.getElementById('area' + t).style.display = 'none';
+      });
+      let activeBtnKey = tab === '100' ? '100' : (tab === 'rand' ? 'Rand' : 'Rep');
+      document.getElementById('menu' + activeBtnKey).classList.add('active');
+      document.getElementById('area' + tab).style.display = 'block';
+
+      if(tab === 'report') loadReport();
+    }
+
+    function initInventory(sheetName, key) {
+      let url = getApiUrl();
+      if(!url) { alert('กรุณากรอกและบันทึก URL หลังบ้านด้านบนก่อนครับ'); return; }
+
+      let initBox = document.getElementById('initBox' + key);
+      let btn = initBox.querySelector('button');
+      btn.innerText = '⏳ กำลังดึงข้อมูล...';
+      btn.disabled = true;
+
+      fetch(`${url}?action=getData&sheet=${sheetName}`)
+        .then(response => response.json())
+        .then(res => {
+          if (res.status === 'success') {
+            buildInventoryMap(res.data, key);
+            initBox.style.display = 'none';
+            document.getElementById('activeBox' + key).style.display = 'block';
+          } else {
+            alert('Error: ' + res.message);
+            btn.innerText = '🗂️ โหลดข้อมูลและเริ่มระบบ';
+            btn.disabled = false;
+          }
+        })
+        .catch(err => {
+          alert('เชื่อมต่อล้มเหลว: ลองเช็ค URL หรือสิทธิ์ Deploy เป็น Anyone อีกครั้ง');
+          btn.innerText = '🗂️ โหลดข้อมูลและเริ่มระบบ';
+          btn.disabled = false;
+        });
+    }
+
+    function buildInventoryMap(data, key) {
+      inventoryMap[key] = {};
+      productRequiresSN[key] = {};
+      let exp = 0;
+
+      data.forEach(item => {
+        exp += item.sysQty;
+        if (item.serial) {
+          productRequiresSN[key][item.code] = true;
+          inventoryMap[key][item.serial] = {
+            type: 'device', code: item.code, name: item.name, serial: item.serial, 
+            sysQty: 1, counted: 0, category: item.category
+          };
+        } else {
+          if(!inventoryMap[key][item.code]) {
+            inventoryMap[key][item.code] = {
+              type: 'gadget', code: item.code, name: item.name, serial: null, 
+              sysQty: 0, counted: 0, category: item.category
+            };
+          }
+          inventoryMap[key][item.code].sysQty += item.sysQty;
+        }
+      });
+      totalExpected[key] = exp;
+      totalCounted[key] = 0;
+      updateLiveList(key);
+    }
+
+    function startCamera(key) {
+      let box = document.getElementById('reader' + key);
+      let closeBtn = document.getElementById('closeCam' + key);
+      box.style.display = 'block';
+      closeBtn.style.display = 'block';
+
+      if (activeScanners[key]) {
+        try { activeScanners[key].clear(); } catch(e){}
+      }
+
+      activeScanners[key] = new Html5Qrcode('reader' + key);
+      activeScanners[key].start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 220, height: 120 } }, (decodedText) => {
+        processScanCode(decodedText, key);
+      }, (err) => {}).catch(err => {
+        alert("ไม่สามารถเปิดกล้องได้: " + err);
+      });
+    }
+
+    function stopCamera(key) {
+      if (activeScanners[key]) {
+        activeScanners[key].stop().then(() => {
+          activeScanners[key].clear();
+          activeScanners[key] = null;
+        }).catch(e => { activeScanners[key] = null; });
+      }
+      document.getElementById('reader' + key).style.display = 'none';
+      document.getElementById('closeCam' + key).style.display = 'none';
+    }
+
+    function stopAllCameras() {
+      ['100', 'rand'].forEach(k => stopCamera(k));
+    }
+
+    function handleManualInput(e, key) {
+      if (e.key === 'Enter') processManualInput(key);
+    }
+
+    function processManualInput(key) {
+      let inputEl = document.getElementById('manualInput' + key);
+      let val = inputEl.value.trim();
+      if(val) {
+        processScanCode(val, key);
+        inputEl.value = '';
+      }
+    }
+
+    function processScanCode(text, key) {
+      if (scanCooldown) return;
+      scanCooldown = true;
+
+      let map = inventoryMap[key];
+      let reqSN = productRequiresSN[key];
+      let itemHandled = false;
+
+      if (map[text] && map[text].type === 'device') {
+        let itm = map[text];
+        if (itm.counted >= 1) {
+          flashUI("ซ้ำ! เครื่องนี้นับไปแล้ว", `SN: ${text}`, "error", key);
+        } else {
+          itm.counted = 1; totalCounted[key]++;
+          flashUI("✅ ผ่าน!", `${itm.name} (SN: ${text})`, "success", key);
+        }
+        itemHandled = true;
+      }
+      else if (map[text] && map[text].type === 'gadget') {
+        let itm = map[text];
+        itm.counted++; totalCounted[key]++;
+        if (itm.counted > itm.sysQty) {
+          flashUI("⚠️ ยอดเกินระบบ!", `${itm.name} (${itm.counted}/${itm.sysQty})`, "warning", key);
+        } else {
+          flashUI("✅ ผ่าน!", `${itm.name} (${itm.counted}/${itm.sysQty})`, "success", key);
+        }
+        itemHandled = true;
+      }
+      else if (reqSN && reqSN[text]) {
+        flashUI("❌ ระวัง!", "สินค้านี้ต้องสแกน IMEI หรือ SN เท่านั้น", "error", key);
+        itemHandled = true;
+      }
+
+      if (!itemHandled) {
+        flashUI("❌ ไม่พบรายการ!", `บาร์โค้ด [${text}] ไม่อยู่ในระบบ`, "error", key);
+      }
+
+      updateLiveList(key);
+      setTimeout(() => { scanCooldown = false; }, 1500);
+    }
+
+    function flashUI(title, msg, type, key) {
+      playBeep(type === 'success' || type === 'warning' ? 'success' : 'error');
+      const box = document.getElementById('scanStatus' + key);
+      box.className = `scan-flash flash-${type}`;
+      box.innerHTML = `<span style="font-size:1.05rem">${title}</span><br><span style="font-weight:400; font-size:0.85rem">${msg}</span>`;
+      box.style.display = 'block';
+    }
+
+    function updateLiveList(key) {
+      let countedCurrent = 0;
+      if(inventoryMap[key]) {
+        Object.values(inventoryMap[key]).forEach(i => countedCurrent += i.counted);
+      }
+      document.getElementById('countProgress' + key).innerText = `${countedCurrent} / ${totalExpected[key] || 0}`;
+      
+      let html = '';
+      if(inventoryMap[key]) {
+        const arr = Object.values(inventoryMap[key]).filter(i => i.counted > 0 || i.sysQty > 0);
+        arr.sort((a,b) => b.counted - a.counted).slice(0, 8).forEach(itm => {
+          let color = itm.counted === itm.sysQty ? 'text-info' : (itm.counted > itm.sysQty ? 'text-warning' : 'text-danger');
+          let lbl = itm.type === 'device' ? `SN: ${itm.serial}` : `Code: ${itm.code}`;
+          html += `<li class="list-group-item d-flex justify-content-between align-items-center py-2 border-secondary border-opacity-25 bg-transparent text-white">
+                     <div class="text-truncate" style="max-width:70%"><span>${itm.name}</span><br><small class="text-sub font-mono">${lbl}</small></div>
+                     <span class="fw-bold font-mono ${color}">${itm.counted}/${itm.sysQty}</span>
+                   </li>`;
+        });
+      }
+      document.getElementById('liveList' + key).innerHTML = html;
+    }
+
+    function finishCount(labelType, key) {
+      if(!confirm("ต้องการปิดรอบการนับและบันทึกรายงานใช่หรือไม่?")) return;
+      stopAllCameras();
+
+      let url = getApiUrl();
+      const payloadData = [];
+      Object.values(inventoryMap[key]).forEach(itm => {
+        let diff = itm.counted - itm.sysQty;
+        let status = diff === 0 ? 'ครบ' : (diff > 0 ? `เกิน ${diff}` : `ขาด ${Math.abs(diff)}`);
+        payloadData.push({ category: itm.category, code: itm.code, name: itm.name, sysQty: itm.sysQty, counted: itm.counted, diff: diff, serial: itm.serial, status: status });
+      });
+
+      fetch(url, {
+        method: 'POST',
+        body: JSON.stringify({ type: `นับ ${labelType}`, data: payloadData })
+      })
+      .then(res => res.json())
+      .then(resp => {
+        alert(resp.message || 'บันทึกสำเร็จ!');
+        location.reload();
+      })
+      .catch(err => { alert('บันทึกสำเร็จ (หรือตรวจสอบในชีต Report)'); location.reload(); });
+    }
+
+    function loadReport() {
+      let url = getApiUrl();
+      document.getElementById('reportContainer').innerHTML = '<div class="text-center text-sub py-4 font-mono">⏳ กำลังโหลดรายงาน...</div>';
+      
+      if(!url) {
+        document.getElementById('reportContainer').innerHTML = '<div class="text-center text-danger py-4 font-mono">กรุณากรอก URL หลังบ้านด้านบนก่อน</div>';
+        return;
+      }
+
+      fetch(`${url}?action=getReport`)
+        .then(res => res.json())
+        .then(res => {
+          if(res.status !== 'success' || res.data.length === 0) {
+            document.getElementById('reportContainer').innerHTML = '<div class="text-center text-sub py-4 font-mono">ยังไม่มีข้อมูลรายงานในระบบ</div>';
+            return;
+          }
+          let html = '';
+          res.data.forEach(r => {
+            let badgeClass = r.status === 'ครบ' ? 'badge-complete' : 'badge-incomplete';
+            let snLine = r.serial && r.serial !== '-' ? `<small class="text-sub d-block font-mono">SN: ${r.serial}</small>` : '';
+            html += `
+              <div class="mb-3 p-3 rounded-4 bg-black border border-secondary border-opacity-25 font-mono text-start">
+                <div class="d-flex justify-content-between mb-2">
+                  <small class="text-sub" style="font-size:0.75rem">${r.dateTime} | ${r.type}</small>
+                  <span class="${badgeClass}">${r.status}</span>
+                </div>
+                <div class="fw-bold text-white mb-1" style="font-size:0.85rem">${r.name}</div>
+                ${snLine}
+                <div class="mt-2 pt-2 border-top border-secondary border-opacity-25 d-flex justify-content-between small text-sub">
+                   <span>ระบบ: <span class="text-white">${r.sysQty}</span></span>
+                   <span>สแกน: <span class="text-white">${r.counted}</span></span>
+                   <span>ผลต่าง: <span class="${r.diff !== 0 ? 'text-danger' : 'text-info'} fw-bold">${r.diff}</span></span>
+                </div>
+              </div>
+            `;
+          });
+          document.getElementById('reportContainer').innerHTML = html;
+        })
+        .catch(err => {
+          document.getElementById('reportContainer').innerHTML = '<div class="text-center text-danger py-4 font-mono">ไม่สามารถดึงข้อมูลรายงานได้</div>';
+        });
+    }
+  </script>
+</body>
+</html>
