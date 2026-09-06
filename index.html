@@ -150,10 +150,10 @@
 <body>
   <div class="container">
 
-    <!-- ช่องตั้งค่าลิงก์เชื่อมต่อ Apps Script (ใส่ครั้งแรกครั้งเดียว) -->
+    <!-- ช่องตั้งค่าลิงก์เชื่อมต่อ Apps Script -->
     <div class="price-check-card mb-3" id="configCard">
       <div class="card-title-badge font-mono text-warning">⚙️ เชื่อมต่อระบบหลังบ้าน</div>
-      <p class="text-sub small text-start">วางลิงก์ Web App (ที่ลงท้ายด้วย /exec จาก Google Apps Script) เพื่อให้ GitHub ดึงข้อมูล:</p>
+      <p class="text-sub small text-start">วางลิงก์ Web App (ที่ลงท้ายด้วย /exec จาก Google Apps Script):</p>
       <div class="search-input-group">
         <input type="text" id="scriptUrlInput" class="search-input" placeholder="https://script.google.com/macros/s/.../exec">
         <button class="btn-search-sm bg-warning text-dark fw-bold" onclick="saveScriptUrl()">บันทึก</button>
@@ -304,6 +304,33 @@
       if(tab === 'report') loadReport();
     }
 
+    // ใช้ Google Script Runner / JSONP พลังทะลวงทุก CORS
+    function callGAS(action, params, callback) {
+      let url = getApiUrl();
+      let callbackName = 'cb_' + Math.round(Math.random() * 1000000);
+      
+      window[callbackName] = function(res) {
+        delete window[callbackName];
+        if(document.getElementById(scriptId)) document.getElementById(scriptId).remove();
+        callback(res);
+      };
+
+      let scriptId = 'script_' + callbackName;
+      let script = document.createElement('script');
+      let paramStr = `action=${action}&callback=${callbackName}`;
+      for(let k in params) {
+        paramStr += `&${k}=${encodeURIComponent(params[k])}`;
+      }
+      script.id = scriptId;
+      script.src = url + (url.includes('?') ? '&' : '?') + paramStr;
+      script.onerror = function() {
+        delete window[callbackName];
+        if(document.getElementById(scriptId)) document.getElementById(scriptId).remove();
+        callback({status: 'error', message: 'เชื่อมต่อหลังบ้านไม่สำเร็จ'});
+      };
+      document.body.appendChild(script);
+    }
+
     function initInventory(sheetName, key) {
       let url = getApiUrl();
       if(!url) { alert('กรุณากรอกและบันทึก URL หลังบ้านด้านบนก่อนครับ'); return; }
@@ -313,24 +340,17 @@
       btn.innerText = '⏳ กำลังดึงข้อมูล...';
       btn.disabled = true;
 
-      fetch(`${url}?action=getData&sheet=${sheetName}`)
-        .then(response => response.json())
-        .then(res => {
-          if (res.status === 'success') {
-            buildInventoryMap(res.data, key);
-            initBox.style.display = 'none';
-            document.getElementById('activeBox' + key).style.display = 'block';
-          } else {
-            alert('Error: ' + res.message);
-            btn.innerText = '🗂️ โหลดข้อมูลและเริ่มระบบ';
-            btn.disabled = false;
-          }
-        })
-        .catch(err => {
-          alert('เชื่อมต่อล้มเหลว: ลองเช็ค URL หรือสิทธิ์ Deploy เป็น Anyone อีกครั้ง');
+      callGAS('getData', { sheet: sheetName }, function(res) {
+        if (res && res.status === 'success') {
+          buildInventoryMap(res.data, key);
+          initBox.style.display = 'none';
+          document.getElementById('activeBox' + key).style.display = 'block';
+        } else {
+          alert('Error: ' + (res ? res.message : 'Unknown error'));
           btn.innerText = '🗂️ โหลดข้อมูลและเริ่มระบบ';
           btn.disabled = false;
-        });
+        }
+      });
     }
 
     function buildInventoryMap(data, key) {
@@ -490,16 +510,12 @@
         payloadData.push({ category: itm.category, code: itm.code, name: itm.name, sysQty: itm.sysQty, counted: itm.counted, diff: diff, serial: itm.serial, status: status });
       });
 
-      fetch(url, {
-        method: 'POST',
-        body: JSON.stringify({ type: `นับ ${labelType}`, data: payloadData })
-      })
-      .then(res => res.json())
-      .then(resp => {
-        alert(resp.message || 'บันทึกสำเร็จ!');
+      // ส่งข้อมูลบันทึกผ่าน JSONP ส่งข้ามโดเมน
+      let payloadStr = encodeURIComponent(JSON.stringify({ type: `นับ ${labelType}`, data: payloadData }));
+      callGAS('saveReport', { payload: payloadStr }, function(resp) {
+        alert(resp.message || 'บันทึกรายงานสำเร็จ!');
         location.reload();
-      })
-      .catch(err => { alert('บันทึกสำเร็จ (หรือตรวจสอบในชีต Report)'); location.reload(); });
+      });
     }
 
     function loadReport() {
@@ -511,38 +527,33 @@
         return;
       }
 
-      fetch(`${url}?action=getReport`)
-        .then(res => res.json())
-        .then(res => {
-          if(res.status !== 'success' || res.data.length === 0) {
-            document.getElementById('reportContainer').innerHTML = '<div class="text-center text-sub py-4 font-mono">ยังไม่มีข้อมูลรายงานในระบบ</div>';
-            return;
-          }
-          let html = '';
-          res.data.forEach(r => {
-            let badgeClass = r.status === 'ครบ' ? 'badge-complete' : 'badge-incomplete';
-            let snLine = r.serial && r.serial !== '-' ? `<small class="text-sub d-block font-mono">SN: ${r.serial}</small>` : '';
-            html += `
-              <div class="mb-3 p-3 rounded-4 bg-black border border-secondary border-opacity-25 font-mono text-start">
-                <div class="d-flex justify-content-between mb-2">
-                  <small class="text-sub" style="font-size:0.75rem">${r.dateTime} | ${r.type}</small>
-                  <span class="${badgeClass}">${r.status}</span>
-                </div>
-                <div class="fw-bold text-white mb-1" style="font-size:0.85rem">${r.name}</div>
-                ${snLine}
-                <div class="mt-2 pt-2 border-top border-secondary border-opacity-25 d-flex justify-content-between small text-sub">
-                   <span>ระบบ: <span class="text-white">${r.sysQty}</span></span>
-                   <span>สแกน: <span class="text-white">${r.counted}</span></span>
-                   <span>ผลต่าง: <span class="${r.diff !== 0 ? 'text-danger' : 'text-info'} fw-bold">${r.diff}</span></span>
-                </div>
+      callGAS('getReport', {}, function(res) {
+        if(res.status !== 'success' || !res.data || res.data.length === 0) {
+          document.getElementById('reportContainer').innerHTML = '<div class="text-center text-sub py-4 font-mono">ยังไม่มีข้อมูลรายงานในระบบ</div>';
+          return;
+        }
+        let html = '';
+        res.data.forEach(r => {
+          let badgeClass = r.status === 'ครบ' ? 'badge-complete' : 'badge-incomplete';
+          let snLine = r.serial && r.serial !== '-' ? `<small class="text-sub d-block font-mono">SN: ${r.serial}</small>` : '';
+          html += `
+            <div class="mb-3 p-3 rounded-4 bg-black border border-secondary border-opacity-25 font-mono text-start">
+              <div class="d-flex justify-content-between mb-2">
+                <small class="text-sub" style="font-size:0.75rem">${r.dateTime} | ${r.type}</small>
+                <span class="${badgeClass}">${r.status}</span>
               </div>
-            `;
-          });
-          document.getElementById('reportContainer').innerHTML = html;
-        })
-        .catch(err => {
-          document.getElementById('reportContainer').innerHTML = '<div class="text-center text-danger py-4 font-mono">ไม่สามารถดึงข้อมูลรายงานได้</div>';
+              <div class="fw-bold text-white mb-1" style="font-size:0.85rem">${r.name}</div>
+              ${snLine}
+              <div class="mt-2 pt-2 border-top border-secondary border-opacity-25 d-flex justify-content-between small text-sub">
+                 <span>ระบบ: <span class="text-white">${r.sysQty}</span></span>
+                 <span>สแกน: <span class="text-white">${r.counted}</span></span>
+                 <span>ผลต่าง: <span class="${r.diff !== 0 ? 'text-danger' : 'text-info'} fw-bold">${r.diff}</span></span>
+              </div>
+            </div>
+          `;
         });
+        document.getElementById('reportContainer').innerHTML = html;
+      });
     }
   </script>
 </body>
