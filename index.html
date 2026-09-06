@@ -511,35 +511,64 @@
       document.getElementById('liveList' + key).innerHTML = html;
     }
 
-    // ส่งข้อมูลจบงานผ่าน JSONP (GET) ทะลวงทุกบล็อก 100%
+    // แก้ไขส่งบันทึกผ่าน Form ดึงหน้าต่างซ่อน (Hidden Form Submit) ทะลวงข้ามโดเมน 100%
     function finishCount(labelType, key) {
       if(!confirm("ต้องการปิดรอบการนับและบันทึกรายงานใช่หรือไม่?")) return;
       stopAllCameras();
 
+      let url = getApiUrl();
       const payloadData = [];
       Object.values(inventoryMap[key]).forEach(itm => {
         let diff = itm.counted - itm.sysQty;
         let status = diff === 0 ? 'ครบ' : (diff > 0 ? `เกิน ${diff}` : `ขาด ${Math.abs(diff)}`);
-        payloadData.push({ category: itm.category, code: itm.code, name: itm.name, sysQty: itm.sysQty, counted: itm.counted, diff: diff, serial: itm.serial, status: status });
+        payloadData.push({ category: itm.category, code: itm.code, name: item = itm.name, sysQty: itm.sysQty, counted: itm.counted, diff: diff, serial: itm.serial, status: status });
       });
 
-      let payloadStr = encodeURIComponent(JSON.stringify({ type: `นับ ${labelType}`, data: payloadData }));
-      
-      callGAS('saveReport', { payload: payloadStr }, function(resp) {
-        if (resp && resp.status === 'success') {
-          alert('บันทึกรายงานสำเร็จ!');
-        } else {
-          alert('บันทึกสำเร็จ!');
-        }
-        location.reload();
-      });
+      let form = document.createElement('form');
+      form.action = url;
+      form.method = 'POST';
+      form.target = 'hidden_iframe';
+
+      let inputAction = document.createElement('input');
+      inputAction.type = 'hidden';
+      inputAction.name = 'action';
+      inputAction.value = 'saveReport';
+      form.appendChild(inputAction);
+
+      let inputType = document.createElement('input');
+      inputType.type = 'hidden';
+      inputType.name = 'type';
+      inputType.value = `นับ ${labelType}`;
+      form.appendChild(inputType);
+
+      let inputData = document.createElement('input');
+      inputData.type = 'hidden';
+      inputData.name = 'payload';
+      inputData.value = JSON.stringify(payloadData);
+      form.appendChild(inputData);
+
+      let iframe = document.getElementById('hidden_iframe');
+      if(!iframe) {
+        iframe = document.createElement('iframe');
+        iframe.name = 'hidden_iframe';
+        iframe.id = 'hidden_iframe';
+        iframe.style.display = 'none';
+        document.body.appendChild(iframe);
+      }
+
+      document.body.appendChild(form);
+      form.submit();
+      form.remove();
+
+      alert('บันทึกรายงานสำเร็จ!');
+      setTimeout(() => { location.reload(); }, 1000);
     }
 
     function loadReport() {
       document.getElementById('reportContainer').innerHTML = '<div class="text-center text-sub py-4 font-mono">⏳ กำลังโหลดรายงาน...</div>';
       
       if(!getApiUrl()) {
-        document.getElementById('reportContainer').innerHTML = '<div class="text-center text-danger py-4 font-mono">กรุณากรอก URL หลังบ้านด้านบนก่อน</div>';
+        document.getElementById('reportContainer').innerHTML = '<div class="text-center text-danger py-4 font-mono">กรุณากรอก URL หน้าเว็บหลังบ้านก่อน</div>';
         return;
       }
 
