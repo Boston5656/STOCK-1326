@@ -124,11 +124,38 @@
     .reader-box {
       width: 100%;
       max-width: 400px;
-      margin: 15px auto;
+      margin: 15px auto 10px auto;
       border-radius: 16px;
       overflow: hidden;
       border: 2px solid var(--accent-yellow);
       background: #000;
+    }
+
+    /* ปุ่มซูมกล้องและสไลเดอร์ */
+    .zoom-control-bar {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .zoom-btn {
+      background: #2C2C2E;
+      color: white;
+      border: 1px solid #48484A;
+      border-radius: 8px;
+      padding: 4px 10px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .zoom-btn.active {
+      background: var(--accent-yellow);
+      color: black;
+      border-color: var(--accent-yellow);
+    }
+    .zoom-slider {
+      width: 120px;
+      accent-color: var(--accent-yellow);
     }
 
     .scan-flash {
@@ -181,7 +208,20 @@
 
         <div id="activeBox100" style="display:none;">
           <button class="btn-yellow-scan font-mono mb-3 py-2 fs-6" onclick="startCamera('100')">📸 เปิดกล้องสแกน</button>
-          <div id="reader100" class="reader-box" style="display:none;"></div>
+          
+          <div id="camContainer100" style="display:none;">
+            <div id="reader100" class="reader-box"></div>
+            <!-- แผงควบคุมซูมกล้อง -->
+            <div class="zoom-control-bar font-mono">
+              <span class="text-sub small">ซูม:</span>
+              <button class="zoom-btn" onclick="setZoom('100', 1)">1x</button>
+              <button class="zoom-btn" onclick="setZoom('100', 1.5)">1.5x</button>
+              <button class="zoom-btn" onclick="setZoom('100', 2)">2x</button>
+              <button class="zoom-btn" onclick="setZoom('100', 3)">3x</button>
+              <input type="range" id="zoomRange100" class="zoom-slider" min="1" max="4" step="0.1" value="1" oninput="setZoomSlider('100', this.value)">
+            </div>
+          </div>
+
           <button id="closeCam100" class="btn btn-sm btn-dark w-100 mb-2 text-sub" style="display:none;" onclick="stopCamera('100')">ปิดกล้อง</button>
 
           <div class="search-input-group">
@@ -216,7 +256,20 @@
 
         <div id="activeBoxrand" style="display:none;">
           <button class="btn-yellow-scan font-mono mb-3 py-2 fs-6" onclick="startCamera('rand')">📸 เปิดกล้องสแกน</button>
-          <div id="readerrand" class="reader-box" style="display:none;"></div>
+          
+          <div id="camContainerrand" style="display:none;">
+            <div id="readerrand" class="reader-box"></div>
+            <!-- แผงควบคุมซูมกล้อง -->
+            <div class="zoom-control-bar font-mono">
+              <span class="text-sub small">ซูม:</span>
+              <button class="zoom-btn" onclick="setZoom('rand', 1)">1x</button>
+              <button class="zoom-btn" onclick="setZoom('rand', 1.5)">1.5x</button>
+              <button class="zoom-btn" onclick="setZoom('rand', 2)">2x</button>
+              <button class="zoom-btn" onclick="setZoom('rand', 3)">3x</button>
+              <input type="range" id="zoomRangerand" class="zoom-slider" min="1" max="4" step="0.1" value="1" oninput="setZoomSlider('rand', this.value)">
+            </div>
+          </div>
+
           <button id="closeCamrand" class="btn btn-sm btn-dark w-100 mb-2 text-sub" style="display:none;" onclick="stopCamera('rand')">ปิดกล้อง</button>
 
           <div class="search-input-group">
@@ -253,6 +306,7 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script>
     let activeScanners = {};
+    let activeStreamTracks = {};
     let scanCooldown = false;
     let inventoryMap = {};
     let productRequiresSN = {};
@@ -395,9 +449,9 @@
     }
 
     function startCamera(key) {
-      let box = document.getElementById('reader' + key);
+      let camContainer = document.getElementById('camContainer' + key);
       let closeBtn = document.getElementById('closeCam' + key);
-      box.style.display = 'block';
+      camContainer.style.display = 'block';
       closeBtn.style.display = 'block';
 
       if (activeScanners[key]) {
@@ -405,11 +459,42 @@
       }
 
       activeScanners[key] = new Html5Qrcode('reader' + key);
-      activeScanners[key].start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 220, height: 120 } }, (decodedText) => {
+      activeScanners[key].start({ facingMode: "environment" }, { fps: 15, qrbox: { width: 220, height: 120 } }, (decodedText) => {
         processScanCode(decodedText, key);
-      }, (err) => {}).catch(err => {
+      }, (err) => {}).then(() => {
+        // ดึง Video Stream มาควบคุมระยะซูม
+        setTimeout(() => {
+          try {
+            let videoEl = document.querySelector('#reader' + key + ' video');
+            if (videoEl && videoEl.srcObject) {
+              let track = videoEl.srcObject.getVideoTracks()[0];
+              if (track) activeStreamTracks[key] = track;
+            }
+          } catch(e) {}
+        }, 800);
+      }).catch(err => {
         alert("ไม่สามารถเปิดกล้องได้: " + err);
       });
+    }
+
+    // ฟังก์ชันควบคุมซูมกล้องมือถือ
+    function setZoom(key, zoomVal) {
+      document.getElementById('zoomRange' + key).value = zoomVal;
+      applyZoom(key, zoomVal);
+    }
+
+    function setZoomSlider(key, zoomVal) {
+      applyZoom(key, zoomVal);
+    }
+
+    function applyZoom(key, zoomVal) {
+      let track = activeStreamTracks[key];
+      if (track) {
+        let capabilities = track.getCapabilities();
+        if (capabilities.zoom) {
+          track.applyConstraints({ advanced: [{ zoom: parseFloat(zoomVal) }] }).catch(e => {});
+        }
+      }
     }
 
     function stopCamera(key) {
@@ -417,9 +502,10 @@
         activeScanners[key].stop().then(() => {
           activeScanners[key].clear();
           activeScanners[key] = null;
+          activeStreamTracks[key] = null;
         }).catch(e => { activeScanners[key] = null; });
       }
-      document.getElementById('reader' + key).style.display = 'none';
+      document.getElementById('camContainer' + key).style.display = 'none';
       document.getElementById('closeCam' + key).style.display = 'none';
     }
 
@@ -511,7 +597,6 @@
       document.getElementById('liveList' + key).innerHTML = html;
     }
 
-    // แก้ไขส่งบันทึกผ่าน Form ดึงหน้าต่างซ่อน (Hidden Form Submit) ทะลวงข้ามโดเมน 100%
     function finishCount(labelType, key) {
       if(!confirm("ต้องการปิดรอบการนับและบันทึกรายงานใช่หรือไม่?")) return;
       stopAllCameras();
@@ -521,7 +606,7 @@
       Object.values(inventoryMap[key]).forEach(itm => {
         let diff = itm.counted - itm.sysQty;
         let status = diff === 0 ? 'ครบ' : (diff > 0 ? `เกิน ${diff}` : `ขาด ${Math.abs(diff)}`);
-        payloadData.push({ category: itm.category, code: itm.code, name: item = itm.name, sysQty: itm.sysQty, counted: itm.counted, diff: diff, serial: itm.serial, status: status });
+        payloadData.push({ category: itm.category, code: itm.code, name: itm.name, sysQty: itm.sysQty, counted: itm.counted, diff: diff, serial: itm.serial, status: status });
       });
 
       let form = document.createElement('form');
