@@ -171,6 +171,26 @@
 
     .badge-complete { background-color: var(--apple-blue); color: white; border-radius: 8px; padding: 4px 10px; font-weight: 600; font-size: 0.75rem;}
     .badge-incomplete { background-color: var(--apple-red); color: white; border-radius: 8px; padding: 4px 10px; font-weight: 600; font-size: 0.75rem;}
+
+    .sync-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.7rem;
+      color: var(--text-sub);
+      margin-left: 6px;
+    }
+    .sync-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--apple-blue);
+      animation: pulse-dot 1.5s infinite;
+    }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 0.3; }
+      50% { opacity: 1; }
+    }
   </style>
 </head>
 <body>
@@ -197,7 +217,10 @@
     <!-- TAB 1: นับ 100% -->
     <div class="tab-content-area" id="area100">
       <div class="price-check-card">
-        <div class="card-title-badge font-mono">📷 FULL INVENTORY AUDIT (100%)</div>
+        <div class="card-title-badge font-mono">
+          📷 FULL INVENTORY AUDIT (100%)
+          <span class="sync-indicator" id="syncIndicator100" style="display:none;"><span class="sync-dot"></span>SYNCING</span>
+        </div>
 
         <div id="initBox100">
           <button class="btn-yellow-scan font-mono" onclick="initInventory('FULL', '100')">
@@ -244,7 +267,10 @@
     <!-- TAB 2: นับสุ่ม -->
     <div class="tab-content-area" id="arearand" style="display:none;">
       <div class="price-check-card">
-        <div class="card-title-badge font-mono">🎲 RANDOM INVENTORY AUDIT</div>
+        <div class="card-title-badge font-mono">
+          🎲 RANDOM INVENTORY AUDIT
+          <span class="sync-indicator" id="syncIndicatorrand" style="display:none;"><span class="sync-dot"></span>SYNCING</span>
+        </div>
 
         <div id="initBoxrand">
           <button class="btn-yellow-scan font-mono" onclick="initInventory('RANDOM', 'rand')">
@@ -311,6 +337,10 @@
     let totalCounted = {};
     let currentSheetName = {};
 
+    // ---- Real-time sync (polling) ----
+    let pollTimers = {};
+    const POLL_INTERVAL_MS = 3000; // ดึงยอดล่าสุดทุก 3 วินาที
+
     window.onload = function() {
       let savedUrl = localStorage.getItem('gas_url');
       if (savedUrl) {
@@ -358,6 +388,9 @@
 
     function switchTab(tab) {
       stopAllCameras();
+      stopPolling('100');
+      stopPolling('rand');
+
       ['100', 'rand', 'report'].forEach(t => {
         let btnKey = t === '100' ? '100' : (t === 'rand' ? 'Rand' : 'Rep');
         document.getElementById('menu' + btnKey).classList.remove('active');
@@ -367,7 +400,13 @@
       document.getElementById('menu' + activeBtnKey).classList.add('active');
       document.getElementById('area' + tab).style.display = 'block';
 
-      if(tab === 'report') loadReport();
+      if (tab === 'report') {
+        loadReport();
+      } else if (inventoryMap[tab]) {
+        // กลับมาแท็บที่เคยโหลดข้อมูลไว้แล้ว ให้ sync ต่อทันที
+        syncCounts(tab);
+        startPolling(tab);
+      }
     }
 
     function callGAS(action, params, callback) {
@@ -411,6 +450,7 @@
           buildInventoryMap(res.data, key);
           initBox.style.display = 'none';
           document.getElementById('activeBox' + key).style.display = 'block';
+          startPolling(key); // เริ่มดึงยอดล่าสุดแบบ real-time ทันทีที่เข้าระบบ
         } else {
           alert('Error: ' + (res ? res.message : 'Unknown error'));
           btn.innerText = '🗂️ โหลดข้อมูลและเริ่มระบบ';
@@ -449,6 +489,53 @@
       totalExpected[key] = exp;
       totalCounted[key] = countedTotal;
       updateLiveList(key);
+    }
+
+    // ---- Polling: ดึงยอดนับล่าสุดจากทุกคนมาซิงค์กันเป็นระยะ ----
+    function startPolling(key) {
+      stopPolling(key); // กันซ้ำ
+      pollTimers[key] = setInterval(() => syncCounts(key), POLL_INTERVAL_MS);
+    }
+
+    function stopPolling(key) {
+      if (pollTimers[key]) {
+        clearInterval(pollTimers[key]);
+        pollTimers[key] = null;
+      }
+      let ind = document.getElementById('syncIndicator' + key);
+      if (ind) ind.style.display = 'none';
+    }
+
+    function syncCounts(key) {
+      if (!currentSheetName[key] || !inventoryMap[key]) return;
+      if (!getApiUrl()) return;
+
+      let ind = document.getElementById('syncIndicator' + key);
+      if (ind) ind.style.display = 'inline-flex';
+
+      callGAS('getCounts', { sheet: currentSheetName[key] }, function(res) {
+        if (ind) ind.style.display = 'none';
+        if (!res || res.status !== 'success') return;
+
+        let changed = false;
+        Object.keys(inventoryMap[key]).forEach(mapKey => {
+          let item = inventoryMap[key][mapKey];
+          let lookupKey = item.serial || item.code;
+          let remoteCount = res.counts[lookupKey];
+
+          // สำหรับ gadget (รวมตาม code) ถ้ามีหลาย mapKey อ้างถึง code เดียวกันจะไม่เกิดในโครงสร้างนี้
+          // เพราะ inventoryMap ถูก group ด้วย code อยู่แล้วตอน buildInventoryMap
+          if (remoteCount !== undefined && remoteCount !== item.counted) {
+            item.counted = remoteCount;
+            changed = true;
+          }
+        });
+
+        if (changed) {
+          totalCounted[key] = res.totalCounted;
+          updateLiveList(key);
+        }
+      });
     }
 
     function startCamera(key) {
@@ -621,6 +708,7 @@
     function finishCount(labelType, key) {
       if(!confirm("ต้องการปิดรอบการนับและบันทึกรายงานใช่หรือไม่?")) return;
       stopAllCameras();
+      stopPolling(key);
 
       let url = getApiUrl();
       const payloadData = [];
