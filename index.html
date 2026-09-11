@@ -821,16 +821,10 @@
         // แสดงครบทุกรายการเสมอ ไม่ตัดทิ้งเหมือนกระดาษจริง
         const arr = Object.values(inventoryMap[key]).filter(i => i.sysQty > 0 || i.counted > 0);
 
-        // เรียง: ยังไม่นับ(ขาว) -> นับไม่ครบ(เหลือง) -> เกิน(แดง) -> นับครบ(ฟ้า)
-        // เพื่อให้เห็นงานที่ยังเหลือขึ้นก่อนเสมอ เหมือนเช็คลิสต์
-        // (เลขลำดับ #seq ของแต่ละชิ้นจะไม่เปลี่ยน แม้ลำดับการแสดงผลจะสลับตามสถานะ)
-        const rank = (itm) => {
-          if (itm.counted === 0) return 0;
-          if (itm.counted < itm.sysQty) return 1;
-          if (itm.counted > itm.sysQty) return 2;
-          return 3; // counted === sysQty และ sysQty > 0
-        };
-        arr.sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name, 'th'));
+        // เรียงตามลำดับในชีตล้วนๆ (#seq) เสมอ ไม่จัดกลุ่มตามสถานะ
+        // เพื่อให้ตำแหน่งนิ่ง ไล่นับตามชั้นวางของจริงได้ ไม่ต้องกวาดหาของที่กระโดดไปมา
+        // สีของแต่ละแถวยังบอกสถานะ (ขาว/เหลือง/ฟ้า/แดง) เหมือนเดิม
+        arr.sort((a, b) => a.seq - b.seq);
 
         arr.forEach(itm => {
           let statusClass = 'row-pending';
