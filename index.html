@@ -11,21 +11,28 @@
 
   <style>
     :root {
-      --bg-black: #000000;
-      --card-dark: #121212;
+      --bg-yellow: #FFD60A;
+      --bg-yellow-deep: #FFC700;
+      --card-white: #FFFFFF;
+      --card-dark: #16161A;
+      --border-light: #ECECEF;
       --border-gray: #2C2C2E;
-      --text-main: #FFFFFF;
+      --text-dark: #1C1C1E;
       --text-sub: #8E8E93;
       --accent-yellow: #FFD60A;
-      --apple-red: #FF453A;
+      --apple-red: #FF3B30;
       --apple-blue: #0A84FF;
+      --shadow-soft: 0 12px 32px rgba(0,0,0,0.12);
+      --shadow-softer: 0 6px 18px rgba(0,0,0,0.08);
     }
 
     body {
-      background-color: var(--bg-black);
+      background: linear-gradient(180deg, var(--bg-yellow) 0%, var(--bg-yellow-deep) 100%);
+      background-attachment: fixed;
       font-family: 'Sarabun', -apple-system, sans-serif;
-      color: var(--text-main);
-      padding: 15px 0 80px 0;
+      color: var(--text-dark);
+      padding: 18px 0 90px 0;
+      min-height: 100vh;
     }
 
     .font-mono {
@@ -36,99 +43,112 @@
     .menu-bar {
       display: flex;
       justify-content: center;
-      gap: 10px;
+      gap: 6px;
       max-width: 600px;
-      margin: 0 auto 20px auto;
-      background: var(--card-dark);
+      margin: 0 auto 18px auto;
+      background: var(--card-white);
       padding: 6px;
       border-radius: 50px;
-      border: 1px solid var(--border-gray);
+      box-shadow: var(--shadow-soft);
     }
     .menu-btn {
       background: transparent;
       border: none;
       color: var(--text-sub);
-      padding: 8px 16px;
+      padding: 10px 18px;
       border-radius: 40px;
       font-size: 0.85rem;
-      font-weight: 600;
+      font-weight: 700;
       transition: all 0.2s;
     }
     .menu-btn.active {
-      background: var(--accent-yellow);
-      color: #000000;
-      font-weight: 700;
+      background: var(--text-dark);
+      color: #ffffff;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.22);
     }
 
     .price-check-card {
       max-width: 600px;
       margin: 0 auto;
-      background-color: var(--card-dark);
-      border: 1px solid var(--border-gray);
-      border-radius: 24px;
-      padding: 24px;
+      background-color: var(--card-white);
+      border: none;
+      border-radius: 28px;
+      padding: 26px;
       text-align: center;
+      box-shadow: var(--shadow-soft);
     }
 
     .card-title-badge {
-      font-size: 1.1rem;
+      font-size: 1.05rem;
       font-weight: 700;
-      color: var(--text-main);
-      margin-bottom: 20px;
+      color: var(--text-dark);
+      margin-bottom: 18px;
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
+      flex-wrap: wrap;
     }
 
+    /* Config card stays dark, feels like an admin/settings chip */
+    #configCard { background-color: var(--card-dark); box-shadow: var(--shadow-soft); }
+    #configCard .card-title-badge { color: var(--accent-yellow); }
+    #configCard p { color: var(--text-sub); }
+    #configCard .search-input-group { background:#000000; border: 1px solid var(--border-gray); }
+    #configCard .search-input { color:#ffffff; }
+
     .btn-yellow-scan {
-      background-color: var(--accent-yellow);
-      color: #000000;
+      background-color: var(--text-dark);
+      color: #ffffff;
       font-weight: 700;
-      border-radius: 16px;
-      padding: 14px;
+      border-radius: 18px;
+      padding: 15px;
       border: none;
       width: 100%;
       font-size: 1rem;
-      box-shadow: 0 4px 20px rgba(255, 214, 10, 0.2);
+      box-shadow: 0 8px 22px rgba(0,0,0,0.20);
     }
     .btn-yellow-scan:active { transform: scale(0.98); }
+    .btn-yellow-scan:disabled { opacity: 0.4; box-shadow: none; }
 
     .search-input-group {
       display: flex;
-      background: #000000;
-      border: 1px solid var(--border-gray);
-      border-radius: 14px;
+      background: #F5F5F7;
+      border: 1.5px solid var(--border-light);
+      border-radius: 16px;
       padding: 4px;
       margin-top: 12px;
     }
     .search-input {
       background: transparent;
       border: none;
-      color: white;
+      color: var(--text-dark);
       padding: 10px 14px;
       font-size: 0.9rem;
       width: 100%;
       outline: none;
     }
+    .search-input:disabled { opacity: 0.5; }
     .btn-search-sm {
-      background: var(--border-gray);
-      color: white;
+      background: var(--text-dark);
+      color: #ffffff;
       border: none;
-      border-radius: 10px;
-      padding: 0 16px;
+      border-radius: 12px;
+      padding: 0 18px;
       font-size: 0.85rem;
-      font-weight: 600;
+      font-weight: 700;
     }
+    .btn-search-sm:disabled { opacity: 0.4; }
 
     .reader-box {
       width: 100%;
       max-width: 400px;
       margin: 15px auto 10px auto;
-      border-radius: 16px;
+      border-radius: 20px;
       overflow: hidden;
-      border: 2px solid var(--accent-yellow);
+      border: 3px solid var(--accent-yellow);
       background: #000;
+      box-shadow: var(--shadow-softer);
     }
 
     .zoom-control-bar {
@@ -139,35 +159,36 @@
       margin-bottom: 12px;
     }
     .zoom-btn {
-      background: #2C2C2E;
-      color: white;
-      border: 1px solid #48484A;
-      border-radius: 8px;
+      background: #F5F5F7;
+      color: var(--text-dark);
+      border: 1px solid var(--border-light);
+      border-radius: 10px;
       padding: 4px 10px;
       font-size: 0.75rem;
-      font-weight: 600;
+      font-weight: 700;
     }
     .zoom-btn.active {
-      background: var(--accent-yellow);
-      color: black;
-      border-color: var(--accent-yellow);
+      background: var(--text-dark);
+      color: #fff;
+      border-color: var(--text-dark);
     }
     .zoom-slider {
       width: 120px;
-      accent-color: var(--accent-yellow);
+      accent-color: var(--text-dark);
     }
 
     .scan-flash {
-      border-radius: 14px;
+      border-radius: 16px;
       padding: 14px;
       text-align: center;
       margin-top: 15px;
       font-weight: 700;
       display: none;
+      box-shadow: var(--shadow-softer);
     }
-    .flash-success { background-color: rgba(10, 132, 255, 0.2); border: 1px solid var(--apple-blue); color: var(--apple-blue); }
-    .flash-error { background-color: rgba(255, 69, 58, 0.2); border: 1px solid var(--apple-red); color: var(--apple-red); }
-    .flash-warning { background-color: rgba(255, 214, 10, 0.2); border: 1px solid var(--accent-yellow); color: var(--accent-yellow); }
+    .flash-success { background-color: #E5F2FF; border: 1.5px solid var(--apple-blue); color: var(--apple-blue); }
+    .flash-error { background-color: #FFEBEA; border: 1.5px solid var(--apple-red); color: var(--apple-red); }
+    .flash-warning { background-color: #FFF8E1; border: 1.5px solid var(--accent-yellow); color: #C79300; }
 
     .badge-complete { background-color: var(--apple-blue); color: white; border-radius: 8px; padding: 4px 10px; font-weight: 600; font-size: 0.75rem;}
     .badge-incomplete { background-color: var(--apple-red); color: white; border-radius: 8px; padding: 4px 10px; font-weight: 600; font-size: 0.75rem;}
@@ -176,9 +197,9 @@
       display: inline-flex;
       align-items: center;
       gap: 5px;
-      font-size: 0.7rem;
+      font-size: 0.65rem;
       color: var(--text-sub);
-      margin-left: 6px;
+      font-weight: 600;
     }
     .sync-dot {
       width: 6px;
@@ -190,6 +211,62 @@
     @keyframes pulse-dot {
       0%, 100% { opacity: 0.3; }
       50% { opacity: 1; }
+    }
+
+    /* Session lock banner - shown to everyone once someone finishes the count */
+    .lock-banner {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      background: var(--text-dark);
+      color: #ffffff;
+      border-radius: 16px;
+      padding: 14px 16px;
+      margin-bottom: 16px;
+      text-align: left;
+      font-size: 0.85rem;
+      box-shadow: var(--shadow-softer);
+    }
+    .lock-banner .lock-icon { font-size: 1.3rem; }
+    .lock-banner .lock-time { color: var(--text-sub); font-size: 0.7rem; display:block; margin-top:2px; }
+
+    /* Live checklist rows - color coded by status */
+    .list-group-item {
+      border-radius: 14px !important;
+      margin-bottom: 7px;
+      border: 1.5px solid transparent !important;
+      transition: all 0.15s;
+    }
+    .row-pending  { background: #FAFAFA; border-color: var(--border-light) !important; color: var(--text-dark); }
+    .row-partial  { background: #FFF8E1; border-color: var(--accent-yellow) !important; color: var(--text-dark); }
+    .row-complete { background: #E5F2FF; border-color: var(--apple-blue) !important; color: var(--text-dark); }
+    .row-over     { background: #FFEBEA; border-color: var(--apple-red) !important; color: var(--text-dark); }
+    .row-sub { color: var(--text-sub); }
+    .badge-pending { color: #B0B0B5; }
+    .badge-partial { color: #C79300; }
+    .badge-complete-count { color: var(--apple-blue); }
+    .badge-over { color: var(--apple-red); }
+
+    hr.opacity-25 { border-color: var(--border-light) !important; opacity: 1 !important; }
+    .text-sub { color: var(--text-sub) !important; }
+
+    .btn-finish { box-shadow: 0 8px 22px rgba(255,59,48,0.28); }
+    .btn-finish:disabled { opacity: 0.45; box-shadow: none; }
+
+    .seq-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 26px;
+      height: 22px;
+      padding: 0 6px;
+      border-radius: 8px;
+      background: var(--text-dark);
+      color: #ffffff;
+      font-size: 0.68rem;
+      font-weight: 700;
+      margin-right: 8px;
+      flex-shrink: 0;
     }
   </style>
 </head>
@@ -229,7 +306,9 @@
         </div>
 
         <div id="activeBox100" style="display:none;">
-          <button class="btn-yellow-scan font-mono mb-3 py-2 fs-6" onclick="startCamera('100')">📸 เปิดกล้องสแกน</button>
+          <div class="lock-banner font-mono" id="lockBanner100"></div>
+
+          <button id="scanBtn100" class="btn-yellow-scan font-mono mb-3 py-2 fs-6" onclick="startCamera('100')">📸 เปิดกล้องสแกน</button>
           
           <div id="camContainer100" style="display:none;">
             <div id="reader100" class="reader-box"></div>
@@ -254,12 +333,16 @@
 
           <hr class="border-secondary my-3 opacity-25">
           <div class="d-flex justify-content-between text-sub font-mono small mb-2">
-             <span>ความคืบหน้า</span>
-             <span id="countProgress100" class="text-white fw-bold">0/0</span>
+             <span>ความคืบหน้า (ชิ้น)</span>
+             <span id="countProgress100" class="text-dark fw-bold">0/0</span>
           </div>
-          <ul class="list-group text-start font-mono small mb-3" id="liveList100" style="max-height: 220px; overflow-y: auto; background: transparent;"></ul>
+          <div class="d-flex justify-content-between text-sub font-mono small mb-2">
+             <span>รายการสินค้า (SKU) ครบแล้ว</span>
+             <span id="skuProgress100" class="text-dark fw-bold">0/0</span>
+          </div>
+          <ul class="list-group text-start font-mono small mb-3" id="liveList100" style="max-height: 320px; overflow-y: auto; background: transparent;"></ul>
 
-          <button class="btn btn-danger w-100 font-mono fw-bold py-2 rounded-4" onclick="finishCount('100%', '100')">💾 จบการนับ และบันทึก REPORT</button>
+          <button id="finishBtn100" class="btn btn-danger btn-finish w-100 font-mono fw-bold py-2 rounded-4" onclick="finishCount('100%', '100')">💾 จบการนับ และบันทึก REPORT</button>
         </div>
       </div>
     </div>
@@ -279,7 +362,9 @@
         </div>
 
         <div id="activeBoxrand" style="display:none;">
-          <button class="btn-yellow-scan font-mono mb-3 py-2 fs-6" onclick="startCamera('rand')">📸 เปิดกล้องสแกน</button>
+          <div class="lock-banner font-mono" id="lockBannerrand"></div>
+
+          <button id="scanBtnrand" class="btn-yellow-scan font-mono mb-3 py-2 fs-6" onclick="startCamera('rand')">📸 เปิดกล้องสแกน</button>
           
           <div id="camContainerrand" style="display:none;">
             <div id="readerrand" class="reader-box"></div>
@@ -304,12 +389,16 @@
 
           <hr class="border-secondary my-3 opacity-25">
           <div class="d-flex justify-content-between text-sub font-mono small mb-2">
-             <span>ความคืบหน้า</span>
-             <span id="countProgressrand" class="text-white fw-bold">0/0</span>
+             <span>ความคืบหน้า (ชิ้น)</span>
+             <span id="countProgressrand" class="text-dark fw-bold">0/0</span>
           </div>
-          <ul class="list-group text-start font-mono small mb-3" id="liveListrand" style="max-height: 220px; overflow-y: auto; background: transparent;"></ul>
+          <div class="d-flex justify-content-between text-sub font-mono small mb-2">
+             <span>รายการสินค้า (SKU) ครบแล้ว</span>
+             <span id="skuProgressrand" class="text-dark fw-bold">0/0</span>
+          </div>
+          <ul class="list-group text-start font-mono small mb-3" id="liveListrand" style="max-height: 320px; overflow-y: auto; background: transparent;"></ul>
 
-          <button class="btn btn-danger w-100 font-mono fw-bold py-2 rounded-4" onclick="finishCount('สุ่ม', 'rand')">💾 จบการนับ และบันทึก REPORT</button>
+          <button id="finishBtnrand" class="btn btn-danger btn-finish w-100 font-mono fw-bold py-2 rounded-4" onclick="finishCount('สุ่ม', 'rand')">💾 จบการนับ และบันทึก REPORT</button>
         </div>
       </div>
     </div>
@@ -336,10 +425,11 @@
     let totalExpected = {};
     let totalCounted = {};
     let currentSheetName = {};
+    let totalItems = {}; // จำนวน SKU/รายการทั้งหมดที่ต้องนับ (คงที่ตามลำดับในชีต)
 
     // ---- Real-time sync (polling) ----
     let pollTimers = {};
-    const POLL_INTERVAL_MS = 3000; // ดึงยอดล่าสุดทุก 3 วินาที
+    const POLL_INTERVAL_MS = 3000; // ดึงยอด + สถานะปิดงานล่าสุดทุก 3 วินาที
 
     window.onload = function() {
       let savedUrl = localStorage.getItem('gas_url');
@@ -403,8 +493,7 @@
       if (tab === 'report') {
         loadReport();
       } else if (inventoryMap[tab]) {
-        // กลับมาแท็บที่เคยโหลดข้อมูลไว้แล้ว ให้ sync ต่อทันที
-        syncCounts(tab);
+        syncCounts(tab);   // sync ทันทีที่กลับมาแท็บเดิม
         startPolling(tab);
       }
     }
@@ -450,7 +539,8 @@
           buildInventoryMap(res.data, key);
           initBox.style.display = 'none';
           document.getElementById('activeBox' + key).style.display = 'block';
-          startPolling(key); // เริ่มดึงยอดล่าสุดแบบ real-time ทันทีที่เข้าระบบ
+          syncCounts(key);   // เช็คยอด + สถานะปิดงานทันทีตั้งแต่เข้าระบบ
+          startPolling(key);
         } else {
           alert('Error: ' + (res ? res.message : 'Unknown error'));
           btn.innerText = '🗂️ โหลดข้อมูลและเริ่มระบบ';
@@ -464,6 +554,7 @@
       productRequiresSN[key] = {};
       let exp = 0;
       let countedTotal = 0;
+      let seqCounter = 0; // ลำดับที่ผูกติดกับตัวสินค้า ไม่เปลี่ยนตามการสแกน
 
       data.forEach(item => {
         exp += item.sysQty;
@@ -471,15 +562,17 @@
 
         if (item.serial) {
           productRequiresSN[key][item.code] = true;
+          seqCounter++;
           inventoryMap[key][item.serial] = {
             type: 'device', code: item.code, name: item.name, serial: item.serial, 
-            sysQty: 1, counted: item.counted, category: item.category
+            sysQty: 1, counted: item.counted, category: item.category, seq: seqCounter
           };
         } else {
           if(!inventoryMap[key][item.code]) {
+            seqCounter++;
             inventoryMap[key][item.code] = {
               type: 'gadget', code: item.code, name: item.name, serial: null, 
-              sysQty: 0, counted: 0, category: item.category
+              sysQty: 0, counted: 0, category: item.category, seq: seqCounter
             };
           }
           inventoryMap[key][item.code].sysQty += item.sysQty;
@@ -488,10 +581,11 @@
       });
       totalExpected[key] = exp;
       totalCounted[key] = countedTotal;
+      totalItems[key] = seqCounter; // จำนวนรายการ (SKU) ทั้งหมดที่ต้องนับในรอบนี้
       updateLiveList(key);
     }
 
-    // ---- Polling: ดึงยอดนับล่าสุดจากทุกคนมาซิงค์กันเป็นระยะ ----
+    // ---- Polling: ดึงยอดนับ + สถานะปิดงานล่าสุดจากทุกคนมาซิงค์กันเป็นระยะ ----
     function startPolling(key) {
       stopPolling(key); // กันซ้ำ
       pollTimers[key] = setInterval(() => syncCounts(key), POLL_INTERVAL_MS);
@@ -523,8 +617,6 @@
           let lookupKey = item.serial || item.code;
           let remoteCount = res.counts[lookupKey];
 
-          // สำหรับ gadget (รวมตาม code) ถ้ามีหลาย mapKey อ้างถึง code เดียวกันจะไม่เกิดในโครงสร้างนี้
-          // เพราะ inventoryMap ถูก group ด้วย code อยู่แล้วตอน buildInventoryMap
           if (remoteCount !== undefined && remoteCount !== item.counted) {
             item.counted = remoteCount;
             changed = true;
@@ -535,10 +627,39 @@
           totalCounted[key] = res.totalCounted;
           updateLiveList(key);
         }
+
+        applySessionLock(key, res);
       });
     }
 
+    // เมื่อมีคนกดจบงานแล้ว บล็อกหน้าจอทุกคนให้กดซ้ำไม่ได้ พร้อมแจ้งใครปิด/เมื่อไหร่
+    function applySessionLock(key, res) {
+      let banner = document.getElementById('lockBanner' + key);
+      let scanBtn = document.getElementById('scanBtn' + key);
+      let finishBtn = document.getElementById('finishBtn' + key);
+      let manualInput = document.getElementById('manualInput' + key);
+      let manualBtn = manualInput ? manualInput.nextElementSibling : null;
+
+      if (res.closed) {
+        if (banner) {
+          banner.style.display = 'flex';
+          banner.innerHTML = `<span class="lock-icon">🔒</span><div><b>ปิดงานแล้ว</b> โดย ${res.closedBy || 'ไม่ระบุชื่อ'}<span class="lock-time">${res.closedAt || ''}</span></div>`;
+        }
+        stopCamera(key);
+        if (scanBtn) scanBtn.disabled = true;
+        if (finishBtn) finishBtn.disabled = true;
+        if (manualInput) manualInput.disabled = true;
+        if (manualBtn) manualBtn.disabled = true;
+        stopPolling(key); // ปิดงานแล้วไม่ต้อง poll ต่อ
+      } else if (banner) {
+        banner.style.display = 'none';
+      }
+    }
+
     function startCamera(key) {
+      let scanBtn = document.getElementById('scanBtn' + key);
+      if (scanBtn && scanBtn.disabled) return; // งานถูกปิดแล้ว ห้ามเปิดกล้อง
+
       let camContainer = document.getElementById('camContainer' + key);
       let closeBtn = document.getElementById('closeCam' + key);
       camContainer.style.display = 'block';
@@ -607,6 +728,7 @@
 
     function processManualInput(key) {
       let inputEl = document.getElementById('manualInput' + key);
+      if (inputEl.disabled) return; // งานถูกปิดแล้ว
       let val = inputEl.value.trim();
       if(val) {
         processScanCode(val, key);
@@ -634,7 +756,6 @@
       }
       else if (map[text] && map[text].type === 'gadget') {
         targetItem = map[text];
-        // เช็คว่าถ้าจำนวนที่นับไปแล้ว เท่ากับหรือมากกว่าระบบ บล็อกทันที!
         if (targetItem.counted >= targetItem.sysQty) {
           flashUI("❌ ครบจำนวนแล้ว!", `${targetItem.name} (${targetItem.counted}/${targetItem.sysQty}) - ห้ามสแกนเกิน`, "error", key);
           playBeep('error');
@@ -656,7 +777,6 @@
         return;
       }
 
-      // ยิงข้อมูลอัปเดตยอดเรียลไทม์ไปที่ Google Sheets ทันที
       callGAS('updateCount', { sheet: currentSheetName[key], code: targetItem.code, serial: targetItem.serial || '' }, function(res) {
         if (res && res.status === 'success') {
           targetItem.counted = res.newCount;
@@ -685,28 +805,71 @@
 
     function updateLiveList(key) {
       let countedCurrent = 0;
+      let completeLines = 0;
       if(inventoryMap[key]) {
-        Object.values(inventoryMap[key]).forEach(i => countedCurrent += i.counted);
+        Object.values(inventoryMap[key]).forEach(i => {
+          countedCurrent += i.counted;
+          if (i.sysQty > 0 && i.counted >= i.sysQty) completeLines++;
+        });
       }
       document.getElementById('countProgress' + key).innerText = `${countedCurrent} / ${totalExpected[key] || 0}`;
-      
+      let skuEl = document.getElementById('skuProgress' + key);
+      if (skuEl) skuEl.innerText = `${completeLines} / ${totalItems[key] || 0}`;
+
       let html = '';
       if(inventoryMap[key]) {
-        const arr = Object.values(inventoryMap[key]).filter(i => i.counted > 0 || i.sysQty > 0);
-        arr.sort((a,b) => b.counted - a.counted).slice(0, 8).forEach(itm => {
-          let color = itm.counted === itm.sysQty ? 'text-info' : (itm.counted > itm.sysQty ? 'text-warning' : 'text-danger');
+        // แสดงครบทุกรายการเสมอ ไม่ตัดทิ้งเหมือนกระดาษจริง
+        const arr = Object.values(inventoryMap[key]).filter(i => i.sysQty > 0 || i.counted > 0);
+
+        // เรียง: ยังไม่นับ(ขาว) -> นับไม่ครบ(เหลือง) -> เกิน(แดง) -> นับครบ(ฟ้า)
+        // เพื่อให้เห็นงานที่ยังเหลือขึ้นก่อนเสมอ เหมือนเช็คลิสต์
+        // (เลขลำดับ #seq ของแต่ละชิ้นจะไม่เปลี่ยน แม้ลำดับการแสดงผลจะสลับตามสถานะ)
+        const rank = (itm) => {
+          if (itm.counted === 0) return 0;
+          if (itm.counted < itm.sysQty) return 1;
+          if (itm.counted > itm.sysQty) return 2;
+          return 3; // counted === sysQty และ sysQty > 0
+        };
+        arr.sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name, 'th'));
+
+        arr.forEach(itm => {
+          let statusClass = 'row-pending';
+          let badgeClass = 'badge-pending';
+
+          if (itm.counted > 0 && itm.counted < itm.sysQty) {
+            statusClass = 'row-partial'; badgeClass = 'badge-partial';
+          } else if (itm.counted > itm.sysQty) {
+            statusClass = 'row-over'; badgeClass = 'badge-over';
+          } else if (itm.sysQty > 0 && itm.counted === itm.sysQty) {
+            statusClass = 'row-complete'; badgeClass = 'badge-complete-count';
+          }
+
           let lbl = itm.type === 'device' ? `SN: ${itm.serial}` : `Code: ${itm.code}`;
-          html += `<li class="list-group-item d-flex justify-content-between align-items-center py-2 border-secondary border-opacity-25 bg-transparent text-white">
-                     <div class="text-truncate" style="max-width:70%"><span>${itm.name}</span><br><small class="text-sub font-mono">${lbl}</small></div>
-                     <span class="fw-bold font-mono ${color}">${itm.counted}/${itm.sysQty}</span>
+          html += `<li class="list-group-item d-flex justify-content-between align-items-center ${statusClass}">
+                     <div class="d-flex align-items-center text-truncate" style="max-width:78%">
+                       <span class="seq-badge font-mono">${itm.seq}</span>
+                       <div class="text-truncate"><span>${itm.name}</span><br><small class="row-sub font-mono">${lbl}</small></div>
+                     </div>
+                     <span class="fw-bold font-mono ${badgeClass}">${itm.counted}/${itm.sysQty}</span>
                    </li>`;
         });
       }
-      document.getElementById('liveList' + key).innerHTML = html;
+      document.getElementById('liveList' + key).innerHTML = html || '<li class="list-group-item row-pending text-center text-sub">ไม่มีรายการ</li>';
     }
 
     function finishCount(labelType, key) {
+      let finishBtn = document.getElementById('finishBtn' + key);
+      if (finishBtn && finishBtn.disabled) return; // กันกดซ้ำเด็ดขาด (งานถูกปิดไปแล้ว)
+
       if(!confirm("ต้องการปิดรอบการนับและบันทึกรายงานใช่หรือไม่?")) return;
+
+      let closedBy = prompt("กรอกชื่อผู้ปิดงาน (ไม่บังคับ):", "") || "ไม่ระบุชื่อ";
+
+      if (finishBtn) {
+        finishBtn.disabled = true;
+        finishBtn.innerText = '⏳ กำลังบันทึก...';
+      }
+
       stopAllCameras();
       stopPolling(key);
 
@@ -723,23 +886,20 @@
       form.method = 'POST';
       form.target = 'hidden_iframe';
 
-      let inputAction = document.createElement('input');
-      inputAction.type = 'hidden';
-      inputAction.name = 'action';
-      inputAction.value = 'saveReport';
-      form.appendChild(inputAction);
-
-      let inputType = document.createElement('input');
-      inputType.type = 'hidden';
-      inputType.name = 'type';
-      inputType.value = `นับ ${labelType}`;
-      form.appendChild(inputType);
-
-      let inputData = document.createElement('input');
-      inputData.type = 'hidden';
-      inputData.name = 'payload';
-      inputData.value = JSON.stringify(payloadData);
-      form.appendChild(inputData);
+      const fields = {
+        action: 'saveReport',
+        type: `นับ ${labelType}`,
+        sheetKey: currentSheetName[key],
+        closedBy: closedBy,
+        payload: JSON.stringify(payloadData)
+      };
+      Object.keys(fields).forEach(name => {
+        let input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = name;
+        input.value = fields[name];
+        form.appendChild(input);
+      });
 
       let iframe = document.getElementById('hidden_iframe');
       if(!iframe) {
