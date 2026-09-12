@@ -90,13 +90,6 @@
       flex-wrap: wrap;
     }
 
-    /* Config card stays dark, feels like an admin/settings chip */
-    #configCard { background-color: var(--card-dark); box-shadow: var(--shadow-soft); }
-    #configCard .card-title-badge { color: var(--accent-yellow); }
-    #configCard p { color: var(--text-sub); }
-    #configCard .search-input-group { background:#000000; border: 1px solid var(--border-gray); }
-    #configCard .search-input { color:#ffffff; }
-
     .btn-yellow-scan {
       background-color: var(--text-dark);
       color: #ffffff;
@@ -292,15 +285,34 @@
 
     /* Report filter row */
     .report-filter-row { display: flex; gap: 8px; margin-bottom: 16px; }
-    .report-date-input {
+    .report-date-wrap {
+      position: relative;
       flex: 1;
       background: #F5F5F7;
       border: 1.5px solid var(--border-light);
       border-radius: 14px;
       padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      min-height: 20px;
+    }
+    .report-date-input {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      background: transparent;
+      border: none;
+      padding: 10px 14px;
       font-size: 0.85rem;
       color: var(--text-dark);
       font-family: 'Space Grotesk', sans-serif;
+    }
+    .report-date-placeholder {
+      color: var(--text-sub);
+      font-size: 0.85rem;
+      font-family: 'Space Grotesk', sans-serif;
+      pointer-events: none;
     }
 
     /* Report table card - แถวต่อเนื่องกันในการ์ดเดียว เหมือนตาราง/กระดาษเช็คลิสต์ */
@@ -361,18 +373,6 @@
 </head>
 <body>
   <div class="container">
-
-    <div class="price-check-card mb-3" id="configCard">
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <div class="card-title-badge font-mono text-warning m-0">⚙️ ตั้งค่าลิงก์หลังบ้าน</div>
-        <button class="btn btn-sm btn-dark text-sub border-secondary" onclick="toggleConfig()" style="font-size:0.75rem;">ซ่อน/แสดง</button>
-      </div>
-      <p class="text-sub small text-start">วางลิงก์ Web App (ที่ลงท้ายด้วย /exec จาก Google Apps Script):</p>
-      <div class="search-input-group">
-        <input type="text" id="scriptUrlInput" class="search-input" placeholder="https://script.google.com/macros/s/.../exec">
-        <button class="btn-search-sm bg-warning text-dark fw-bold" onclick="saveScriptUrl()">บันทึก</button>
-      </div>
-    </div>
 
     <div class="menu-bar font-mono">
       <button class="menu-btn active" id="menu100" onclick="switchTab('100')">📦 นับ 100%</button>
@@ -502,7 +502,10 @@
         <div class="card-title-badge font-mono">📊 REPORT HISTORY</div>
 
         <div class="report-filter-row font-mono">
-          <input type="date" id="reportDateFilter" class="report-date-input" onchange="onReportDateFilterChange()">
+          <div class="report-date-wrap">
+            <input type="date" id="reportDateFilter" class="report-date-input" onchange="onReportDateFilterChange()">
+            <span class="report-date-placeholder" id="reportDatePlaceholder">📅 เลือกวันที่</span>
+          </div>
           <button class="btn-search-sm" onclick="clearReportDateFilter()">ทั้งหมด</button>
         </div>
 
@@ -532,42 +535,17 @@
     let pollTimers = {};
     const POLL_INTERVAL_MS = 3000; // ดึงยอด + สถานะปิดงานล่าสุดทุก 3 วินาที
 
-    // ลิงก์ Web App เริ่มต้น - ฝังไว้ในโค้ดเลย ไม่ต้องให้ผู้ใช้กรอกเอง
+    // ลิงก์ Web App ฝังไว้ในโค้ดเลย ไม่มี UI ให้กรอกอีกต่อไป
     const DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwL6bevgTXbnq7Ct12dcZ6T9k3DrZMupK8HkPkDaGhcDiV9NpAx4P-UZmeCSc9OaAEsAw/exec';
 
     window.onload = function() {
-      let savedUrl = localStorage.getItem('gas_url');
-      if (!savedUrl) {
-        // ครั้งแรกที่เปิด ยังไม่มีค่าบันทึกไว้ -> ใช้ลิงก์เริ่มต้นทันที
+      if (!localStorage.getItem('gas_url')) {
         localStorage.setItem('gas_url', DEFAULT_SCRIPT_URL);
-        savedUrl = DEFAULT_SCRIPT_URL;
       }
-      document.getElementById('scriptUrlInput').value = savedUrl;
     };
 
-    function toggleConfig() {
-      let card = document.getElementById('configCard');
-      let body = card.querySelector('.search-input-group');
-      let desc = card.querySelector('p');
-      if(body.style.display === 'none') {
-        body.style.display = 'flex';
-        desc.style.display = 'block';
-      } else {
-        body.style.display = 'none';
-        desc.style.display = 'none';
-      }
-    }
-
-    function saveScriptUrl() {
-      let url = document.getElementById('scriptUrlInput').value.trim();
-      if(!url) { alert('กรุณากรอกลิงก์'); return; }
-      localStorage.setItem('gas_url', url);
-      alert('บันทึกการเชื่อมต่อสำเร็จ!');
-      location.reload();
-    }
-
     function getApiUrl() {
-      return localStorage.getItem('gas_url');
+      return localStorage.getItem('gas_url') || DEFAULT_SCRIPT_URL;
     }
 
     // เปิด/ปิดโหมดนับเกิน: ใช้ตอนเจอของเกินจำนวนในระบบ (เช่น setbox ครบแล้ว แต่ยังเจอเพิ่มอีก 3 ชิ้น)
@@ -1073,13 +1051,22 @@
 
     function onReportDateFilterChange() {
       reportCurrentPage = 1;
+      updateReportDatePlaceholder();
       renderReportPage();
     }
 
     function clearReportDateFilter() {
       document.getElementById('reportDateFilter').value = '';
       reportCurrentPage = 1;
+      updateReportDatePlaceholder();
       renderReportPage();
+    }
+
+    // ซ่อนข้อความ "เลือกวันที่" เมื่อมีการเลือกวันแล้ว (เพราะ iOS ไม่โชว์ค่า/ไอคอนปฏิทินเอง)
+    function updateReportDatePlaceholder() {
+      let val = document.getElementById('reportDateFilter').value;
+      let ph = document.getElementById('reportDatePlaceholder');
+      if (ph) ph.style.display = val ? 'none' : 'block';
     }
 
     function renderReportPage() {
