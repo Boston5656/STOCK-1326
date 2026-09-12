@@ -268,6 +268,97 @@
       margin-right: 8px;
       flex-shrink: 0;
     }
+
+    /* Over-count mode toggle */
+    .btn-over-toggle {
+      width: 100%;
+      border: 1.5px solid var(--border-light);
+      background: #F5F5F7;
+      color: var(--text-dark);
+      font-weight: 700;
+      border-radius: 14px;
+      padding: 10px;
+      font-size: 0.8rem;
+      margin-bottom: 10px;
+      transition: all 0.15s;
+    }
+    .btn-over-toggle.active {
+      background: #FFF3E0;
+      border-color: #FF9500;
+      color: #C2660A;
+      box-shadow: 0 0 0 3px rgba(255,149,0,0.15);
+    }
+    .flash-over { background-color: #FFF3E0; border: 1.5px solid #FF9500; color: #C2660A; }
+
+    /* Report filter row */
+    .report-filter-row { display: flex; gap: 8px; margin-bottom: 16px; }
+    .report-date-input {
+      flex: 1;
+      background: #F5F5F7;
+      border: 1.5px solid var(--border-light);
+      border-radius: 14px;
+      padding: 10px 14px;
+      font-size: 0.85rem;
+      color: var(--text-dark);
+      font-family: 'Space Grotesk', sans-serif;
+    }
+
+    /* Report cards (per-item, matches employee-card style) */
+    .report-card {
+      background: var(--card-dark);
+      border-radius: 18px;
+      padding: 16px;
+      margin-bottom: 12px;
+      text-align: left;
+      box-shadow: var(--shadow-softer);
+    }
+    .report-card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .report-date { color: var(--text-sub); font-size: 0.7rem; }
+    .report-code { color: var(--text-sub); font-size: 0.72rem; margin-bottom: 2px; }
+    .report-name { color: #ffffff; font-weight: 700; font-size: 0.92rem; margin-bottom: 4px; }
+    .report-serial { color: var(--text-sub); font-size: 0.72rem; margin-bottom: 4px; }
+    .report-count-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+    }
+    .report-count-label { color: var(--text-sub); font-size: 0.75rem; }
+    .report-count-value { color: #ffffff; font-weight: 700; font-size: 1.1rem; }
+    .badge-over-report { background-color: #FF9500; color: #ffffff; border-radius: 8px; padding: 4px 10px; font-weight: 600; font-size: 0.75rem; }
+
+    /* Report pagination - round number buttons */
+    .report-pagination {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+    .page-btn, .page-arrow {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: none;
+      background: #F5F5F7;
+      color: var(--text-dark);
+      font-weight: 700;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 0.85rem;
+    }
+    .page-btn.active { background: var(--text-dark); color: #ffffff; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+    .page-arrow:disabled { opacity: 0.3; }
+    .page-ellipsis { color: var(--text-sub); padding: 0 4px; }
   </style>
 </head>
 <body>
@@ -309,7 +400,9 @@
           <div class="lock-banner font-mono" id="lockBanner100"></div>
 
           <button id="scanBtn100" class="btn-yellow-scan font-mono mb-3 py-2 fs-6" onclick="startCamera('100')">📸 เปิดกล้องสแกน</button>
-          
+
+          <button id="overModeBtn100" class="btn-over-toggle font-mono" onclick="toggleOverMode('100')">🔺 โหมดนับเกิน: ปิด</button>
+
           <div id="camContainer100" style="display:none;">
             <div id="reader100" class="reader-box"></div>
             <div class="zoom-control-bar font-mono">
@@ -365,7 +458,9 @@
           <div class="lock-banner font-mono" id="lockBannerrand"></div>
 
           <button id="scanBtnrand" class="btn-yellow-scan font-mono mb-3 py-2 fs-6" onclick="startCamera('rand')">📸 เปิดกล้องสแกน</button>
-          
+
+          <button id="overModeBtnrand" class="btn-over-toggle font-mono" onclick="toggleOverMode('rand')">🔺 โหมดนับเกิน: ปิด</button>
+
           <div id="camContainerrand" style="display:none;">
             <div id="readerrand" class="reader-box"></div>
             <div class="zoom-control-bar font-mono">
@@ -407,9 +502,16 @@
     <div class="tab-content-area" id="areareport" style="display:none;">
       <div class="price-check-card">
         <div class="card-title-badge font-mono">📊 REPORT HISTORY</div>
+
+        <div class="report-filter-row font-mono">
+          <input type="date" id="reportDateFilter" class="report-date-input" onchange="onReportDateFilterChange()">
+          <button class="btn-search-sm" onclick="clearReportDateFilter()">ทั้งหมด</button>
+        </div>
+
         <div id="reportContainer">
           <div class="text-center text-sub py-4 font-mono">กำลังโหลดรายงาน...</div>
         </div>
+        <div id="reportPagination" class="report-pagination font-mono"></div>
       </div>
     </div>
 
@@ -426,6 +528,7 @@
     let totalCounted = {};
     let currentSheetName = {};
     let totalItems = {}; // จำนวน SKU/รายการทั้งหมดที่ต้องนับ (คงที่ตามลำดับในชีต)
+    let overMode = {}; // true = กำลังอยู่ในโหมดนับเกิน (อนุญาตให้สแกนเกิน sysQty ได้)
 
     // ---- Real-time sync (polling) ----
     let pollTimers = {};
@@ -461,6 +564,20 @@
 
     function getApiUrl() {
       return localStorage.getItem('gas_url');
+    }
+
+    // เปิด/ปิดโหมดนับเกิน: ใช้ตอนเจอของเกินจำนวนในระบบ (เช่น setbox ครบแล้ว แต่ยังเจอเพิ่มอีก 3 ชิ้น)
+    function toggleOverMode(key) {
+      overMode[key] = !overMode[key];
+      let btn = document.getElementById('overModeBtn' + key);
+      if (!btn) return;
+      if (overMode[key]) {
+        btn.classList.add('active');
+        btn.innerText = '🔺 โหมดนับเกิน: เปิดอยู่ (แตะเพื่อปิด)';
+      } else {
+        btn.classList.remove('active');
+        btn.innerText = '🔺 โหมดนับเกิน: ปิด';
+      }
     }
 
     function playBeep(type) {
@@ -756,8 +873,8 @@
       }
       else if (map[text] && map[text].type === 'gadget') {
         targetItem = map[text];
-        if (targetItem.counted >= targetItem.sysQty) {
-          flashUI("❌ ครบจำนวนแล้ว!", `${targetItem.name} (${targetItem.counted}/${targetItem.sysQty}) - ห้ามสแกนเกิน`, "error", key);
+        if (targetItem.counted >= targetItem.sysQty && !overMode[key]) {
+          flashUI("❌ ครบจำนวนแล้ว!", `${targetItem.name} (${targetItem.counted}/${targetItem.sysQty}) - เปิด "โหมดนับเกิน" ถ้าเจอของเกินจริง`, "error", key);
           playBeep('error');
           setTimeout(() => { scanCooldown = false; }, 1500);
           return;
@@ -777,13 +894,15 @@
         return;
       }
 
-      callGAS('updateCount', { sheet: currentSheetName[key], code: targetItem.code, serial: targetItem.serial || '' }, function(res) {
+      callGAS('updateCount', { sheet: currentSheetName[key], code: targetItem.code, serial: targetItem.serial || '', allowOver: overMode[key] ? '1' : '0' }, function(res) {
         if (res && res.status === 'success') {
           targetItem.counted = res.newCount;
           totalCounted[key] = res.totalCounted;
           
           if (targetItem.type === 'device') {
             flashUI("✅ ผ่าน!", `${targetItem.name} (SN: ${text})`, "success", key);
+          } else if (targetItem.counted > targetItem.sysQty) {
+            flashUI("🔺 บันทึกส่วนเกิน!", `${targetItem.name} (${targetItem.counted}/${targetItem.sysQty})`, "over", key);
           } else {
             flashUI("✅ ผ่าน!", `${targetItem.name} (${targetItem.counted}/${targetItem.sysQty})`, "success", key);
           }
@@ -796,7 +915,7 @@
     }
 
     function flashUI(title, msg, type, key) {
-      playBeep(type === 'success' || type === 'warning' ? 'success' : 'error');
+      playBeep(type === 'success' || type === 'warning' || type === 'over' ? 'success' : 'error');
       const box = document.getElementById('scanStatus' + key);
       box.className = `scan-flash flash-${type}`;
       box.innerHTML = `<span style="font-size:1.05rem">${title}</span><br><span style="font-weight:400; font-size:0.85rem">${msg}</span>`;
@@ -912,9 +1031,15 @@
       setTimeout(() => { location.reload(); }, 1000);
     }
 
+    // ---- Report: เก็บข้อมูลทั้งหมด แล้วกรอง/แบ่งหน้าฝั่งหน้าเว็บ ----
+    let reportDataAll = [];
+    const REPORT_PAGE_SIZE = 8;
+    let reportCurrentPage = 1;
+
     function loadReport() {
       document.getElementById('reportContainer').innerHTML = '<div class="text-center text-sub py-4 font-mono">⏳ กำลังโหลดรายงาน...</div>';
-      
+      document.getElementById('reportPagination').innerHTML = '';
+
       if(!getApiUrl()) {
         document.getElementById('reportContainer').innerHTML = '<div class="text-center text-danger py-4 font-mono">กรุณากรอก URL หน้าเว็บหลังบ้านก่อน</div>';
         return;
@@ -922,31 +1047,119 @@
 
       callGAS('getReport', {}, function(res) {
         if(!res || res.status !== 'success' || !res.data || res.data.length === 0) {
+          reportDataAll = [];
           document.getElementById('reportContainer').innerHTML = '<div class="text-center text-sub py-4 font-mono">ยังไม่มีข้อมูลรายงานในระบบ</div>';
           return;
         }
-        let html = '';
-        res.data.forEach(r => {
-          let badgeClass = r.status === 'ครบ' ? 'badge-complete' : 'badge-incomplete';
-          let snLine = r.serial && r.serial !== '-' ? `<small class="text-sub d-block font-mono">SN: ${r.serial}</small>` : '';
-          html += `
-            <div class="mb-3 p-3 rounded-4 bg-black border border-secondary border-opacity-25 font-mono text-start">
-              <div class="d-flex justify-content-between mb-2">
-                <small class="text-sub" style="font-size:0.75rem">${r.dateTime} | ${r.type}</small>
-                <span class="${badgeClass}">${r.status}</span>
-              </div>
-              <div class="fw-bold text-white mb-1" style="font-size:0.85rem">${r.name}</div>
-              ${snLine}
-              <div class="mt-2 pt-2 border-top border-secondary border-opacity-25 d-flex justify-content-between small text-sub">
-                 <span>ระบบ: <span class="text-white">${r.sysQty}</span></span>
-                 <span>สแกน: <span class="text-white">${r.counted}</span></span>
-                 <span>ผลต่าง: <span class="${r.diff !== 0 ? 'text-danger' : 'text-info'} fw-bold">${r.diff}</span></span>
-              </div>
-            </div>
-          `;
-        });
-        document.getElementById('reportContainer').innerHTML = html;
+        reportDataAll = res.data;
+        reportCurrentPage = 1;
+        renderReportPage();
       });
+    }
+
+    // แปลง "12/09/2026 14:23" -> "2026-09-12" เพื่อเทียบกับค่าจาก <input type="date">
+    function thaiDateToISO(dateTimeStr) {
+      if (!dateTimeStr || dateTimeStr === '-') return '';
+      let datePart = dateTimeStr.split(' ')[0];
+      let parts = datePart.split('/');
+      if (parts.length !== 3) return '';
+      let [dd, mm, yyyy] = parts;
+      return `${yyyy}-${mm}-${dd}`;
+    }
+
+    function onReportDateFilterChange() {
+      reportCurrentPage = 1;
+      renderReportPage();
+    }
+
+    function clearReportDateFilter() {
+      document.getElementById('reportDateFilter').value = '';
+      reportCurrentPage = 1;
+      renderReportPage();
+    }
+
+    function renderReportPage() {
+      let filterVal = document.getElementById('reportDateFilter').value; // yyyy-mm-dd หรือว่าง
+      let filtered = reportDataAll;
+      if (filterVal) {
+        filtered = reportDataAll.filter(r => thaiDateToISO(r.dateTime) === filterVal);
+      }
+
+      if (filtered.length === 0) {
+        document.getElementById('reportContainer').innerHTML = '<div class="text-center text-sub py-4 font-mono">ไม่พบรายงานในวันที่เลือก</div>';
+        document.getElementById('reportPagination').innerHTML = '';
+        return;
+      }
+
+      const totalPages = Math.max(1, Math.ceil(filtered.length / REPORT_PAGE_SIZE));
+      if (reportCurrentPage > totalPages) reportCurrentPage = totalPages;
+      const startIdx = (reportCurrentPage - 1) * REPORT_PAGE_SIZE;
+      const pageItems = filtered.slice(startIdx, startIdx + REPORT_PAGE_SIZE);
+
+      let html = '';
+      pageItems.forEach(r => {
+        let badgeClass = 'badge-complete';
+        if (r.status.indexOf('ขาด') === 0) badgeClass = 'badge-incomplete';
+        else if (r.status.indexOf('เกิน') === 0) badgeClass = 'badge-over-report';
+
+        let snLine = r.serial && r.serial !== '-' ? `<div class="report-serial font-mono">SN: ${r.serial}</div>` : '';
+
+        html += `
+          <div class="report-card font-mono">
+            <div class="report-card-top">
+              <span class="report-date">${r.dateTime} · ${r.type}</span>
+              <span class="${badgeClass}">${r.status}</span>
+            </div>
+            <div class="report-code">รหัส: ${r.code}</div>
+            <div class="report-name">${r.name}</div>
+            ${snLine}
+            <div class="report-count-row">
+              <span class="report-count-label">นับได้ / ในระบบ</span>
+              <span class="report-count-value">${r.counted} / ${r.sysQty}</span>
+            </div>
+          </div>
+        `;
+      });
+      document.getElementById('reportContainer').innerHTML = html;
+
+      renderReportPagination(totalPages);
+    }
+
+    // ปุ่มเลขหน้าทรงกลม พร้อมลูกศรก่อนหน้า/ถัดไป
+    function renderReportPagination(totalPages) {
+      let el = document.getElementById('reportPagination');
+      if (totalPages <= 1) { el.innerHTML = ''; return; }
+
+      let html = '';
+      html += `<button class="page-arrow" onclick="goReportPage(${reportCurrentPage - 1})" ${reportCurrentPage === 1 ? 'disabled' : ''}>‹</button>`;
+
+      let start = Math.max(1, reportCurrentPage - 2);
+      let end = Math.min(totalPages, start + 4);
+      start = Math.max(1, end - 4);
+
+      if (start > 1) {
+        html += `<button class="page-btn" onclick="goReportPage(1)">1</button>`;
+        if (start > 2) html += `<span class="page-ellipsis">…</span>`;
+      }
+
+      for (let p = start; p <= end; p++) {
+        html += `<button class="page-btn ${p === reportCurrentPage ? 'active' : ''}" onclick="goReportPage(${p})">${p}</button>`;
+      }
+
+      if (end < totalPages) {
+        if (end < totalPages - 1) html += `<span class="page-ellipsis">…</span>`;
+        html += `<button class="page-btn" onclick="goReportPage(${totalPages})">${totalPages}</button>`;
+      }
+
+      html += `<button class="page-arrow" onclick="goReportPage(${reportCurrentPage + 1})" ${reportCurrentPage === totalPages ? 'disabled' : ''}>›</button>`;
+
+      el.innerHTML = html;
+    }
+
+    function goReportPage(p) {
+      reportCurrentPage = p;
+      renderReportPage();
+      document.getElementById('reportContainer').scrollIntoView({behavior:'smooth', block:'start'});
     }
   </script>
 </body>
